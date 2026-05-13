@@ -1,6 +1,7 @@
 #!/bin/bash
 # run_all.sh
 # Purpose: Run bun_parser on all valid and invalid .bun files and save logs
+# Note: Logs for lecturer samples include a header comment stating they are official samples.
 
 # Ensure we are in the Phase2 root directory
 ROOT_DIR="$(cd "$(dirname "$0")/../.." && pwd)"
@@ -20,29 +21,43 @@ if [ ! -x "$BUN_PARSER" ]; then
     exit 1
 fi
 
+# --- VALID FILES ---
 echo "=== Running tests on VALID bun files ==="
-> results/baseline_valid.log
-for f in "$VALID_DIR"/*.bun; do
-    [ -e "$f" ] || continue  # skip if no files
-    echo "Testing $f" | tee -a results/baseline_valid.log
-    "$BUN_PARSER" "$f" >> results/baseline_valid.log 2>&1
-    echo "Exit code: $?" | tee -a results/baseline_valid.log
-    echo "---------------------------" | tee -a results/baseline_valid.log
+
+VALID_LOG="results/samples_valid.log"
+> "$VALID_LOG"
+echo "# Note: The following files are lecturer-provided samples" >> "$VALID_LOG"
+
+for sub in lecturer_samples crafted; do
+    for f in "$VALID_DIR/$sub"/*.bun; do
+        [ -e "$f" ] || continue  # skip if no files
+        echo "Testing $f" | tee -a "$VALID_LOG"
+        "$BUN_PARSER" "$f" >> "$VALID_LOG" 2>&1
+        echo "Exit code: $?" | tee -a "$VALID_LOG"
+        echo "---------------------------" | tee -a "$VALID_LOG"
+    done
 done
 
+# --- INVALID FILES ---
 echo "=== Running tests on INVALID bun files ==="
-> results/baseline_invalid.log
-for f in "$INVALID_DIR"/*.bun; do
-    [ -e "$f" ] || continue  # skip if no files
-    echo "Testing $f" | tee -a results/baseline_invalid.log
-    timeout 5 "$BUN_PARSER" "$f" >> results/baseline_invalid.log 2>&1
-    EC=$?
-    if [ $EC -eq 124 ]; then
-        echo "Result: HANG (timeout)" | tee -a results/baseline_invalid.log
-    else
-        echo "Exit code: $EC" | tee -a results/baseline_invalid.log
-    fi
-    echo "---------------------------" | tee -a results/baseline_invalid.log
+
+INVALID_LOG="results/samples_invalid.log"
+> "$INVALID_LOG"
+echo "# Note: The following files are lecturer-provided samples" >> "$INVALID_LOG"
+
+for sub in lecturer_samples crafted; do
+    for f in "$INVALID_DIR/$sub"/*.bun; do
+        [ -e "$f" ] || continue  # skip if no files
+        echo "Testing $f" | tee -a "$INVALID_LOG"
+        timeout 5 "$BUN_PARSER" "$f" >> "$INVALID_LOG" 2>&1
+        EC=$?
+        if [ $EC -eq 124 ]; then
+            echo "Result: HANG (timeout)" | tee -a "$INVALID_LOG"
+        else
+            echo "Exit code: $EC" | tee -a "$INVALID_LOG"
+        fi
+        echo "---------------------------" | tee -a "$INVALID_LOG"
+    done
 done
 
 echo "All tests complete. Logs saved in results/"
