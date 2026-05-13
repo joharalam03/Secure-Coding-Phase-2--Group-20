@@ -1,0 +1,6 @@
+# Crafted test files
+Testing tests/fixtures/valid/crafted/reserved_nonzero.bun
+ BUN Malformed (error code: 1)
+- Reserved header field must be zero
+Exit code: 1
+---------------------------
