@@ -23,15 +23,18 @@ generate_crafted:
 	python3 $(GENERATORS) --out tests/fixtures/invalid/crafted/bad_align_multi_asset.bun --asset-payload "AAAAA" --compression rle --asset-count 4 --force-misalignment
 
 
+.PHONY: build
+build: 
+	@echo "Building target source code..."
+	cd target && make
 
 .PHONY: reproduce
-reproduce: generate_crafted
+reproduce: build generate_crafted
 	@echo "Running all bun_parser tests..."
 	bash ./tests/scripts/run_all.sh
 
 
 .PHONY: clear
-
 clear:
 	@echo "Cleaning reproduction artefacts..."
 
