@@ -1,1 +1,81 @@
-# Note: The following files are lecturer-provided samples
+# Lecturer sample files
+Testing tests/fixtures/invalid/samples/01-bad-magic.bun
+ BUN Malformed (error code: 1)
+- Invalid magic number
+Exit code: 1
+---------------------------
+Testing tests/fixtures/invalid/samples/02-bad-version.bun
+ BUN Unsupported (error code: 2)
+- Unsupported version
+Exit code: 2
+---------------------------
+Testing tests/fixtures/invalid/samples/03-bad-offset-alignment.bun
+ BUN Malformed (error code: 1)
+- Offsets/sizes must be divisible by 4
+Exit code: 1
+---------------------------
+Testing tests/fixtures/invalid/samples/04-section-past-eof.bun
+ BUN Malformed (error code: 1)
+- Table offset/size extends beyond file end
+Exit code: 1
+---------------------------
+Testing tests/fixtures/invalid/samples/05-overlapping-sections.bun
+ BUN Malformed (error code: 1)
+- Sections overlap in file
+Exit code: 1
+---------------------------
+Testing tests/fixtures/invalid/samples/06-asset-name-past-string-table.bun
+ BUN Malformed (error code: 1)
+- Asset name offset/length outside string table
+Exit code: 1
+---------------------------
+Testing tests/fixtures/invalid/samples/07-asset-name-nonprintable.bun
+ BUN Malformed (error code: 1)
+- Asset name contains non-printable characters
+Exit code: 1
+---------------------------
+Testing tests/fixtures/invalid/samples/08-truncated-file.bun
+ BUN Malformed (error code: 1)
+- File too short: less than header size
+Exit code: 1
+---------------------------
+Testing tests/fixtures/invalid/samples/09-misaligned-section-size.bun
+ BUN Malformed (error code: 1)
+- Uncompressed data section size must be divisible by 4
+Exit code: 1
+---------------------------
+Testing tests/fixtures/invalid/samples/10-overlapping-with-nonprintable.bun
+ BUN Malformed (error code: 1)
+- Sections overlap in file
+Exit code: 1
+---------------------------
+Testing tests/fixtures/invalid/samples/11-second-asset-empty-name.bun
+ BUN Malformed (error code: 1)
+- Asset name cannot be empty
+Exit code: 1
+---------------------------
+Testing tests/fixtures/invalid/samples/12-asset-name-oob.bun
+ BUN Malformed (error code: 1)
+- Asset name offset/length outside string table
+Exit code: 1
+---------------------------
+Testing tests/fixtures/invalid/samples/13-asset-empty-name.bun
+ BUN Malformed (error code: 1)
+- Asset name cannot be empty
+Exit code: 1
+---------------------------
+Testing tests/fixtures/invalid/samples/14-rle-zero-count.bun
+ BUN Malformed (error code: 1)
+- RLE count cannot be zero
+Exit code: 1
+---------------------------
+Testing tests/fixtures/invalid/samples/15-rle-bomb.bun
+ BUN Malformed (error code: 1)
+- RLE uncompressed size does not match declared size
+Exit code: 1
+---------------------------
+Testing tests/fixtures/invalid/samples/16-rle-truncated.bun
+ BUN Malformed (error code: 1)
+- RLE uncompressed size does not match declared size
+Exit code: 1
+---------------------------
