@@ -49,7 +49,7 @@ def write_padding(f, n):
         f.write(b"\x00" * n)
 
 def main():
-    out_path = Path("tests/fixtures/invalid/crafted/partial-string-attack.bun")
+    out_path = Path("tests/fixtures/invalid/crafted/partial_string_attack.bun")
     out_path.parent.mkdir(parents=True, exist_ok=True)
 
     # -------------------

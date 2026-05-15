@@ -60,6 +60,17 @@ run_crafted_test() {
     elif [ "$expected" == "invalid" ] && [ $EC -eq 0 ]; then
         echo -e "\033[0;31m[FAIL] $bunfile expected invalid, got exit code 0\033[0m"
     fi
+
+    # --- Only check FINDING 6 for partial_string_attack.bun ---
+    if [[ "$bunfile" == *partial_string_attack.bun ]]; then
+        if ! grep -q "Asset [0-9]\+:" "$tmp_out"; then
+            echo -e "\033[0;33m[INCORRECT OUTPUT] $bunfile is invalid and parser did NOT output any assets (should have output valid ones)\033[0m"
+        else
+            echo -e "\033[0;33m[WARN] $bunfile is invalid but parser printed some assets:\033[0m"
+            grep "Asset [0-9]\+:" "$tmp_out"
+        fi
+    fi
+
 }
 
 # --- VALID FILES ---

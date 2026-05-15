@@ -17,6 +17,6 @@ tests/fixtures/invalid/samples/15-rle-bomb.bun → violation printed to STDOUT
 tests/fixtures/invalid/samples/16-rle-truncated.bun → violation printed to STDOUT
 tests/fixtures/invalid/crafted/bad_align_multi_asset.bun → violation printed to STDOUT
 tests/fixtures/invalid/crafted/bad_align_single_asset.bun → violation printed to STDOUT
-tests/fixtures/invalid/crafted/partial-string-attack.bun → violation printed to STDOUT
+tests/fixtures/invalid/crafted/partial_string_attack.bun → violation printed to STDOUT
 tests/fixtures/invalid/crafted/rle_bad_uncompressed.bun → no violation message detected
 tests/fixtures/invalid/crafted/uncompressed_bad_size.bun → no violation message detected
