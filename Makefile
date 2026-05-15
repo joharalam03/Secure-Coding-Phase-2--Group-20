@@ -24,6 +24,7 @@ generate_crafted:
 	# Alignment test multi-asset (safe controlled corruption)
 	python3 $(GENERATORS) --out tests/fixtures/invalid/crafted/bad_align_multi_asset.bun --asset-payload "AAAAA" --compression rle --asset-count 4 --force-misalignment
 
+	python3 tests/generators/partial_string_attack.py
 
 .PHONY: build
 build: 

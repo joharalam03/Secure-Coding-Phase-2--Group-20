@@ -7,6 +7,10 @@ Testing tests/fixtures/invalid/crafted/bad_align_single_asset.bun
  BUN Malformed (error code: 1)
 - Offsets/sizes must be divisible by 4
 ---------------------------
+Testing tests/fixtures/invalid/crafted/partial-string-attack.bun
+ BUN Malformed (error code: 1)
+- Asset name offset/length outside string table
+---------------------------
 Testing tests/fixtures/invalid/crafted/rle_bad_uncompressed.bun
 === BUN File Header ===
   Magic: 0x304e5542 (expected 0x304e5542)
