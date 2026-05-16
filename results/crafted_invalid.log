@@ -7,7 +7,39 @@ Testing tests/fixtures/invalid/crafted/bad_align_single_asset.bun
  BUN Malformed (error code: 1)
 - Offsets/sizes must be divisible by 4
 ---------------------------
-Testing tests/fixtures/invalid/crafted/partial_string_attack.bun
+Testing tests/fixtures/invalid/crafted/partial_invalid_01_partial_string_attack.bun
+ BUN Malformed (error code: 1)
+- Asset name offset/length outside string table
+---------------------------
+Testing tests/fixtures/invalid/crafted/partial_invalid_02_truncated_last_name.bun
+ BUN Malformed (error code: 1)
+- Asset name offset/length outside string table
+---------------------------
+Testing tests/fixtures/invalid/crafted/partial_invalid_03_oob_name_offset.bun
+ BUN Malformed (error code: 1)
+- Asset name offset/length outside string table
+---------------------------
+Testing tests/fixtures/invalid/crafted/partial_invalid_04_invalid_name_length.bun
+ BUN Malformed (error code: 1)
+- Asset name offset/length outside string table
+---------------------------
+Testing tests/fixtures/invalid/crafted/partial_invalid_05_invalid_data_offset.bun
+ BUN Malformed (error code: 1)
+- Asset data offset/size outside data section
+---------------------------
+Testing tests/fixtures/invalid/crafted/partial_invalid_06_multi_violation.bun
+ BUN Malformed (error code: 1)
+- Asset name offset/length outside string table
+---------------------------
+Testing tests/fixtures/invalid/crafted/partial_invalid_07_middle_name_cutoff.bun
+ BUN Malformed (error code: 1)
+- Asset name offset/length outside string table
+---------------------------
+Testing tests/fixtures/invalid/crafted/partial_invalid_08_recover_after_bad_asset.bun
+ BUN Malformed (error code: 1)
+- Asset name offset/length outside string table
+---------------------------
+Testing tests/fixtures/invalid/crafted/partial_invalid_09_violation_accumulation.bun
  BUN Malformed (error code: 1)
 - Asset name offset/length outside string table
 ---------------------------
