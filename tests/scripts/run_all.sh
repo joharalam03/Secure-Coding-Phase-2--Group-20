@@ -45,14 +45,19 @@ check_stdout_violation() {
     rm -f "$tmp_out" "$tmp_err"
 }
 
-# --- Helper: run crafted test and highlight fails ---
 run_crafted_test() {
     bunfile=$1
-    expected=$2   # "valid" or "invalid"
+    expected=$2
     logfile=$3
 
-    timeout 5 "$BUN_PARSER" "$bunfile" >> "$logfile" 2>&1
+    tmp_out=$(mktemp)
+    tmp_err=$(mktemp)
+
+    timeout 5 "$BUN_PARSER" "$bunfile" > "$tmp_out" 2> "$tmp_err"
     EC=$?
+
+    cat "$tmp_out" >> "$logfile"
+    cat "$tmp_err" >> "$logfile"
 
     # Highlight fails in terminal
     if [ "$expected" == "valid" ] && [ $EC -ne 0 ]; then
@@ -61,16 +66,27 @@ run_crafted_test() {
         echo -e "\033[0;31m[FAIL] $bunfile expected invalid, got exit code 0\033[0m"
     fi
 
-    # --- Only check FINDING 6 for partial_string_attack.bun ---
-    if [[ "$bunfile" == *partial_string_attack.bun ]]; then
-        if ! grep -q "Asset [0-9]\+:" "$tmp_out" 2>/dev/null; then
-            echo -e "\033[0;33m[INCORRECT OUTPUT] $bunfile is invalid and parser did NOT output any assets (should have output valid ones)\033[0m"
+    # --- partial-invalid logic ---
+    if [[ "$(basename "$bunfile")" == partial_invalid* ]]; then
+
+        asset_count=$(grep -c "Asset [0-9]\+:" "$tmp_out" || true)
+        violation_count=$(grep -cE "outside|malformed|unsupported" "$tmp_out" || true)
+
+        asset_count=${asset_count:-0}
+        violation_count=${violation_count:-0}
+
+        if [ "$asset_count" -eq 0 ]; then
+            echo -e "\033[0;31m[FAIL] $bunfile: NO assets recovered\033[0m"
+
+        elif [ "$violation_count" -le 1 ]; then
+            echo -e "\033[0;33m[WARN] $bunfile: likely FAIL-FAST (violations=$violation_count)\033[0m"
+
         else
-            echo -e "\033[0;33m[WARN] $bunfile is invalid but parser printed some assets:\033[0m"
-            grep "Asset [0-9]\+:" "$tmp_out" 2>/dev/null
+            echo -e "\033[0;32m[OK] $bunfile: recovered=$asset_count violations=$violation_count\033[0m"
         fi
     fi
 
+    rm -f "$tmp_out" "$tmp_err"
 }
 
 # --- VALID FILES ---
@@ -99,6 +115,8 @@ for f in "$VALID_DIR/crafted"/*.bun; do
     echo "Testing $f" >> "$CRAFTED_VALID_LOG"
     run_crafted_test "$f" "valid" "$CRAFTED_VALID_LOG"
     echo "---------------------------" >> "$CRAFTED_VALID_LOG"
+
+    check_stdout_violation "$f"
 done
 
 # --- INVALID FILES ---
