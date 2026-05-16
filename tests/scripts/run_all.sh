@@ -63,11 +63,11 @@ run_crafted_test() {
 
     # --- Only check FINDING 6 for partial_string_attack.bun ---
     if [[ "$bunfile" == *partial_string_attack.bun ]]; then
-        if ! grep -q "Asset [0-9]\+:" "$tmp_out"; then
+        if ! grep -q "Asset [0-9]\+:" "$tmp_out" 2>/dev/null; then
             echo -e "\033[0;33m[INCORRECT OUTPUT] $bunfile is invalid and parser did NOT output any assets (should have output valid ones)\033[0m"
         else
             echo -e "\033[0;33m[WARN] $bunfile is invalid but parser printed some assets:\033[0m"
-            grep "Asset [0-9]\+:" "$tmp_out"
+            grep "Asset [0-9]\+:" "$tmp_out" 2>/dev/null
         fi
     fi
 
