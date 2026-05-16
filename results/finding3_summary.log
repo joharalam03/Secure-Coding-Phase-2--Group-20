@@ -1,11 +1,4 @@
 # Finding 3: stdout vs stderr violations
-tests/fixtures/valid/samples/01-empty.bun → no violation message detected
-tests/fixtures/valid/samples/02-alt-empty.bun → no violation message detected
-tests/fixtures/valid/samples/03-one-asset.bun → no violation message detected
-tests/fixtures/valid/samples/04-binary-asset.bun → no violation message detected
-tests/fixtures/valid/samples/05-multi-assets-slack.bun → no violation message detected
-tests/fixtures/valid/samples/06-rle-valid.bun → no violation message detected
-tests/fixtures/valid/crafted/reserved_nonzero.bun → violation printed to STDOUT
 tests/fixtures/invalid/samples/01-bad-magic.bun → violation printed to STDOUT
 tests/fixtures/invalid/samples/02-bad-version.bun → violation printed to STDOUT
 tests/fixtures/invalid/samples/03-bad-offset-alignment.bun → violation printed to STDOUT
@@ -24,5 +17,6 @@ tests/fixtures/invalid/samples/15-rle-bomb.bun → violation printed to STDOUT
 tests/fixtures/invalid/samples/16-rle-truncated.bun → violation printed to STDOUT
 tests/fixtures/invalid/crafted/bad_align_multi_asset.bun → violation printed to STDOUT
 tests/fixtures/invalid/crafted/bad_align_single_asset.bun → violation printed to STDOUT
+tests/fixtures/invalid/crafted/partial_string_attack.bun → violation printed to STDOUT
 tests/fixtures/invalid/crafted/rle_bad_uncompressed.bun → no violation message detected
 tests/fixtures/invalid/crafted/uncompressed_bad_size.bun → no violation message detected

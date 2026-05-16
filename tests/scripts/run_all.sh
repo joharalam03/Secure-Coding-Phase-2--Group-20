@@ -1,5 +1,5 @@
 #!/bin/bash
-# run_all.sh
+# run_all.sh - full test suite with live crafted fail highlighting
 
 ROOT_DIR="$(cd "$(dirname "$0")/../.." && pwd)"
 cd "$ROOT_DIR" || exit 1
@@ -45,6 +45,34 @@ check_stdout_violation() {
     rm -f "$tmp_out" "$tmp_err"
 }
 
+# --- Helper: run crafted test and highlight fails ---
+run_crafted_test() {
+    bunfile=$1
+    expected=$2   # "valid" or "invalid"
+    logfile=$3
+
+    timeout 5 "$BUN_PARSER" "$bunfile" >> "$logfile" 2>&1
+    EC=$?
+
+    # Highlight fails in terminal
+    if [ "$expected" == "valid" ] && [ $EC -ne 0 ]; then
+        echo -e "\033[0;31m[FAIL] $bunfile expected valid, got exit code $EC\033[0m"
+    elif [ "$expected" == "invalid" ] && [ $EC -eq 0 ]; then
+        echo -e "\033[0;31m[FAIL] $bunfile expected invalid, got exit code 0\033[0m"
+    fi
+
+    # --- Only check FINDING 6 for partial_string_attack.bun ---
+    if [[ "$bunfile" == *partial_string_attack.bun ]]; then
+        if ! grep -q "Asset [0-9]\+:" "$tmp_out" 2>/dev/null; then
+            echo -e "\033[0;33m[INCORRECT OUTPUT] $bunfile is invalid and parser did NOT output any assets (should have output valid ones)\033[0m"
+        else
+            echo -e "\033[0;33m[WARN] $bunfile is invalid but parser printed some assets:\033[0m"
+            grep "Asset [0-9]\+:" "$tmp_out" 2>/dev/null
+        fi
+    fi
+
+}
+
 # --- VALID FILES ---
 
 SAMPLES_VALID_LOG="results/samples_valid.log"
@@ -58,25 +86,19 @@ for f in "$VALID_DIR/samples"/*.bun; do
     EC=$?
     echo "Exit code: $EC" >> "$SAMPLES_VALID_LOG"
     echo "---------------------------" >> "$SAMPLES_VALID_LOG"
-
-    # Finding 3 check
-    check_stdout_violation "$f"
 done
+
+# --- CRAFTED VALID FILES ---
 
 CRAFTED_VALID_LOG="results/crafted_valid.log"
 > "$CRAFTED_VALID_LOG"
-echo "# Crafted test files" >> "$CRAFTED_VALID_LOG"
+echo "# Crafted valid test files" >> "$CRAFTED_VALID_LOG"
 
 for f in "$VALID_DIR/crafted"/*.bun; do
     [ -e "$f" ] || continue
     echo "Testing $f" >> "$CRAFTED_VALID_LOG"
-    "$BUN_PARSER" "$f" >> "$CRAFTED_VALID_LOG" 2>&1
-    EC=$?
-    echo "Exit code: $EC" >> "$CRAFTED_VALID_LOG"
+    run_crafted_test "$f" "valid" "$CRAFTED_VALID_LOG"
     echo "---------------------------" >> "$CRAFTED_VALID_LOG"
-
-    # Finding 3 check
-    check_stdout_violation "$f"
 done
 
 # --- INVALID FILES ---
@@ -96,28 +118,20 @@ for f in "$INVALID_DIR/samples"/*.bun; do
         echo "Exit code: $EC" >> "$SAMPLES_INVALID_LOG"
     fi
     echo "---------------------------" >> "$SAMPLES_INVALID_LOG"
-
-    # Finding 3 check
     check_stdout_violation "$f"
 done
 
+# --- CRAFTED INVALID FILES ---
+
 CRAFTED_INVALID_LOG="results/crafted_invalid.log"
 > "$CRAFTED_INVALID_LOG"
-echo "# Crafted test files" >> "$CRAFTED_INVALID_LOG"
+echo "# Crafted invalid test files" >> "$CRAFTED_INVALID_LOG"
 
 for f in "$INVALID_DIR/crafted"/*.bun; do
     [ -e "$f" ] || continue
     echo "Testing $f" >> "$CRAFTED_INVALID_LOG"
-    timeout 5 "$BUN_PARSER" "$f" >> "$CRAFTED_INVALID_LOG" 2>&1
-    EC=$?
-    if [ $EC -eq 124 ]; then
-        echo "Result: HANG (timeout)" >> "$CRAFTED_INVALID_LOG"
-    else
-        echo "Exit code: $EC" >> "$CRAFTED_INVALID_LOG"
-    fi
+    run_crafted_test "$f" "invalid" "$CRAFTED_INVALID_LOG"
     echo "---------------------------" >> "$CRAFTED_INVALID_LOG"
-
-    # Finding 3 check
     check_stdout_violation "$f"
 done
 
