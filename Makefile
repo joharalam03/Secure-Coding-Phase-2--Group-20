@@ -16,6 +16,12 @@ generate_crafted:
 	# RLE uncompressed_size mismatch 
 	python3 $(GENERATORS) --out tests/fixtures/invalid/crafted/rle_bad_uncompressed.bun --compression rle --asset-payload "AAAA" --uncompressed-size 10
 
+    	# RLE compressed asset with uncompressed_size = 0
+	python3 $(GENERATORS) --out tests/fixtures/invalid/crafted/rle_uncompressed_zero.bun --compression rle --asset-payload "AAAA" --uncompressed-size 0
+
+	# RLE compressed asset with uncompressed_size = UINT64_MAX
+	python3 $(GENERATORS) --out tests/fixtures/invalid/crafted/rle_bomb_uint64max.bun --compression rle --asset-payload "AAAA" --uncompressed-size 18446744073709551615
+	
 	# set uncompressed size != 0 when compression==0
 	python3 $(GENERATORS) --out tests/fixtures/invalid/crafted/uncompressed_bad_size.bun --compression none --uncompressed-size 9999
 
