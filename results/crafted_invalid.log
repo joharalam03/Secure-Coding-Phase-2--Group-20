@@ -38,6 +38,60 @@ Asset 0:
 
 Result: bun_ok
 ---------------------------
+Testing tests/fixtures/invalid/crafted/rle_bomb_uint64max.bun
+=== BUN File Header ===
+  Magic: 0x304e5542 (expected 0x304e5542)
+  Version: 1.0
+  Asset count: 1
+  Asset table offset: 60
+  String table offset: 108
+  String table size: 8
+  Data section offset: 116
+  Data section size: 4
+  Reserved: 0
+
+=== Asset Records ===
+
+Asset 0:
+  Name: "rlebomb"
+  Name offset: 0, length: 7
+  Data offset: 0, size: 4
+  Uncompressed size: 18446744073709551615
+  Compression: 1 (0=none)
+  Type: 0
+  Checksum: 0x00000000
+  Flags: 0x00000000
+  Data: "AAAA"
+
+Result: bun_ok
+---------------------------
+Testing tests/fixtures/invalid/crafted/rle_uncompressed_zero.bun
+=== BUN File Header ===
+  Magic: 0x304e5542 (expected 0x304e5542)
+  Version: 1.0
+  Asset count: 1
+  Asset table offset: 60
+  String table offset: 108
+  String table size: 8
+  Data section offset: 116
+  Data section size: 4
+  Reserved: 0
+
+=== Asset Records ===
+
+Asset 0:
+  Name: "rlezero"
+  Name offset: 0, length: 7
+  Data offset: 0, size: 4
+  Uncompressed size: 0
+  Compression: 1 (0=none)
+  Type: 0
+  Checksum: 0x00000000
+  Flags: 0x00000000
+  Data: "AAAA"
+
+Result: bun_ok
+---------------------------
 Testing tests/fixtures/invalid/crafted/uncompressed_bad_size.bun
 === BUN File Header ===
   Magic: 0x304e5542 (expected 0x304e5542)
