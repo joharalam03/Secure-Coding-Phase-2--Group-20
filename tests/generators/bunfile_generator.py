@@ -135,8 +135,8 @@ def generate_single(args):
         for _ in range(asset_count):
             write_asset_record(
                 f,
-                name_offset=0,
-                name_length=len(asset_name),
+                name_offset=getattr(args, "name_offset", 0),
+                name_length=getattr(args, "name_length", len(asset_name)),
                 data_offset=0,
                 data_size=len(asset_payload),
                 compression=compression,
@@ -176,7 +176,14 @@ def main():
     parser.add_argument(
         "--mode", 
         default="single", 
-        choices=["single", "fuzz", "property-none-size", "property-rle-size", "property-valid-none"])
+        choices=[
+            "single", 
+            "fuzz", 
+            "property-none-size", 
+            "property-rle-size", 
+            "property-valid-none",
+            "property-name-bounds"
+            ])
     parser.add_argument("--count", type=int, default=1)
 
     args = parser.parse_args()
@@ -289,6 +296,42 @@ def main():
             args.asset_count = 1
             args.reserved = 0
             args.force_misalignment = False
+
+            args.out = str(
+                base_out.with_name(f"{base_out.stem}_{i}.bun")
+            )
+
+            generate_single(args)
+
+        return
+
+    # =========================
+    # PROPERTY-BASED TESTING:
+    # asset name must stay within string table
+    # =========================
+    if args.mode == "property-name-bounds":
+        base_out = Path(args.out)
+        base_out.parent.mkdir(parents=True, exist_ok=True)
+
+        bad_name_cases = [
+            (8, 1),       # starts exactly at end of string table
+            (6, 5),       # starts inside but extends beyond end
+            (100, 1),     # offset far outside string table
+            (0, 999),     # starts correctly but length is too large
+            (7, 2),       # crosses boundary by one byte
+        ]
+
+        for i, (bad_offset, bad_length) in enumerate(bad_name_cases, start=1):
+            args.asset_name = "hello"
+            args.asset_payload = "DATA"
+            args.compression = "none"
+            args.uncompressed_size = 0
+            args.asset_count = 1
+            args.reserved = 0
+            args.force_misalignment = False
+
+            args.name_offset = bad_offset
+            args.name_length = bad_length
 
             args.out = str(
                 base_out.with_name(f"{base_out.stem}_{i}.bun")

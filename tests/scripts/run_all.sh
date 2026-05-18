@@ -260,4 +260,42 @@ for f in "$PROPERTY_VALID_DIR"/prop_valid_none_*.bun; do
     echo "---------------------------" >> "$PROPERTY_LOG"
 done
 
+# --- PROPERTY-BASED TESTS: asset name must stay within string table ---
+
+echo "" >> "$PROPERTY_LOG"
+echo "# Property-based tests: asset name bounds" >> "$PROPERTY_LOG"
+echo "Property: name_offset + name_length must stay within string_table_size" >> "$PROPERTY_LOG"
+
+python3 tests/generators/bunfile_generator.py \
+    --mode property-name-bounds \
+    --out "$PROPERTY_DIR/prop_name_bounds.bun" \
+    >> "$PROPERTY_LOG" 2>&1
+
+for f in "$PROPERTY_DIR"/prop_name_bounds_*.bun; do
+    [ -e "$f" ] || continue
+
+    property_checked=$((property_checked + 1))
+
+    echo "Testing $f" >> "$PROPERTY_LOG"
+
+    timeout 5 "$BUN_PARSER" "$f" >> "$PROPERTY_LOG" 2>&1
+    EC=$?
+
+    if [ $EC -eq 124 ]; then
+        echo "[TRIGGERED FLAW] Parser hung for more than 5 seconds" >> "$PROPERTY_LOG"
+        echo -e "\033[0;31m[FAIL] $f expected invalid, parser hung\033[0m"
+        property_triggered=$((property_triggered + 1))
+
+    elif [ $EC -eq 0 ]; then
+        echo "[TRIGGERED FLAW] Invalid name-bounds property case accepted with exit code 0" >> "$PROPERTY_LOG"
+        echo -e "\033[0;31m[FAIL] $f expected invalid, got exit code 0\033[0m"
+        property_triggered=$((property_triggered + 1))
+
+    else
+        echo "[OK] Invalid name-bounds property case rejected with exit code $EC" >> "$PROPERTY_LOG"
+    fi
+
+    echo "---------------------------" >> "$PROPERTY_LOG"
+done
+
 echo "All tests complete. Logs are in results/"
