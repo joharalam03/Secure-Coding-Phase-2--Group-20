@@ -45,4 +45,68 @@ echo
 echo "[OK] Strict warning build completed successfully."
 echo "The target parser compiled under stricter compiler warning flags."
 
+
+SANITIZER_CFLAGS="-std=c11 -Wall -Wextra -Wpedantic -fsanitize=address,undefined -fno-omit-frame-pointer -g -O2"
+
+echo
+echo "========================================"
+echo "B. Sanitizer build"
+echo "========================================"
+echo "Using CFLAGS: $SANITIZER_CFLAGS"
+echo
+
+echo "Rebuilding target with AddressSanitizer and UndefinedBehaviorSanitizer..."
+cd target || exit 1
+
+make clean || true
+make CFLAGS="$SANITIZER_CFLAGS"
+BUILD_STATUS=$?
+
+cd "$ROOT_DIR" || exit 1
+
+if [ $BUILD_STATUS -ne 0 ]; then
+    echo
+    echo "[FAIL] Sanitizer build failed."
+    exit 1
+fi
+
+if [ ! -x "./target/bun_parser" ]; then
+    echo
+    echo "[FAIL] Sanitizer build completed, but ./target/bun_parser was not produced."
+    exit 1
+fi
+
+echo
+echo "[OK] Sanitizer build completed successfully."
+
+echo
+echo "Running reproduction tests under sanitizer build..."
+
+mkdir -p results
+SANITIZER_LOG="results/sanitizer_test_output.log"
+
+bash tests/scripts/run_all.sh 2>&1 | tee "$SANITIZER_LOG"
+TEST_STATUS=${PIPESTATUS[0]}
+
+if [ $TEST_STATUS -ne 0 ]; then
+    echo
+    echo "[FAIL] Test runner exited with a non-zero status under sanitizer build."
+    exit 1
+fi
+
+if grep -qiE "AddressSanitizer|UndefinedBehaviorSanitizer|runtime error:" "$SANITIZER_LOG" results/* 2>/dev/null; then
+    echo
+    echo "[FAIL] Sanitizer reported a runtime error."
+    exit 1
+fi
+
+if grep -qiE "\[FAIL\]|\[INCORRECT OUTPUT\]" "$SANITIZER_LOG" 2>/dev/null; then
+    echo
+    echo "[INFO] Sanitizer build completed, and reproduction tests reported known incorrect-output findings."
+    echo "[INFO] No sanitizer crash was detected."
+else
+    echo
+    echo "[OK] Sanitizer build completed with no reported failures."
+fi
+
 exit 0
