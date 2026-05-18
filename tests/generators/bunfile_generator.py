@@ -173,7 +173,7 @@ def main():
     parser.add_argument("--force-misalignment", action="store_true")
 
     # NEW PBT CONTROLS
-    parser.add_argument("--mode", default="single", choices=["single", "fuzz"])
+    parser.add_argument("--mode", default="single", choices=["single", "fuzz", "property-none-size"])
     parser.add_argument("--count", type=int, default=1)
 
     args = parser.parse_args()
@@ -195,6 +195,29 @@ def main():
             args.compression = random.choice(list(COMPRESS_MAP.keys()))
 
             args.out = str(Path(base_out).with_name(f"{Path(base_out).stem}_{i}.bun"))
+
+            generate_single(args)
+
+        return
+
+    if args.mode == "property-none-size":
+        base_out = Path(args.out)
+        base_out.parent.mkdir(parents=True, exist_ok=True)
+
+        bad_sizes = [1, 2, 4, 8, 15, 255, 9999]
+
+        for size in bad_sizes:
+            args.asset_name = "hello"
+            args.asset_payload = "Hello, BUN!"
+            args.compression = "none"
+            args.uncompressed_size = size
+            args.asset_count = 1
+            args.reserved = 0
+            args.force_misalignment = False
+
+            args.out = str(
+                base_out.with_name(f"{base_out.stem}_{size}.bun")
+            )
 
             generate_single(args)
 
