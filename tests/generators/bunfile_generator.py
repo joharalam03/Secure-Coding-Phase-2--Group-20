@@ -91,7 +91,7 @@ def write_asset_record(f, **kwargs):
 
 def generate_single(args):
     asset_name = args.asset_name.encode()
-    asset_payload = args.asset_payload.encode()
+    asset_payload = args.asset_payload.encode("latin-1")
     compression = COMPRESS_MAP[args.compression]
     asset_count = args.asset_count
 
@@ -173,7 +173,7 @@ def main():
     parser.add_argument("--force-misalignment", action="store_true")
 
     # NEW PBT CONTROLS
-    parser.add_argument("--mode", default="single", choices=["single", "fuzz", "property-none-size"])
+    parser.add_argument("--mode", default="single", choices=["single", "fuzz", "property-none-size", "property-rle-size"])
     parser.add_argument("--count", type=int, default=1)
 
     args = parser.parse_args()
@@ -200,6 +200,10 @@ def main():
 
         return
 
+    # =========================
+    # PROPERTY-BASED TEST MODE:
+    # NONE COMPRESSION SIZE
+    # =========================
     if args.mode == "property-none-size":
         base_out = Path(args.out)
         base_out.parent.mkdir(parents=True, exist_ok=True)
@@ -217,6 +221,41 @@ def main():
 
             args.out = str(
                 base_out.with_name(f"{base_out.stem}_{size}.bun")
+            )
+
+            generate_single(args)
+
+        return
+    
+    # =========================
+    # PROPERTY-BASED TESTING:
+    # RLE expanded size must match uncompressed_size
+    # =========================
+    if args.mode == "property-rle-size":
+        base_out = Path(args.out)
+        base_out.parent.mkdir(parents=True, exist_ok=True)
+
+        bad_rle_cases = [
+            (bytes([2, ord("A"), 3, ord("B")]), 99),      # expands to 5
+            (bytes([1, ord("A"), 1, ord("B")]), 10),      # expands to 2
+            (bytes([5, ord("X"), 6, ord("Y")]), 1),       # expands to 11
+            (bytes([10, ord("A"), 5, ord("B")]), 100),    # expands to 15
+            (bytes([7, ord("C"), 8, ord("D")]), 9999),    # expands to 15
+        ]
+
+        for i, (payload, wrong_size) in enumerate(bad_rle_cases, start=1):
+            args.asset_name = "hello"
+
+            args.asset_payload = payload.decode("latin-1")
+
+            args.compression = "rle"
+            args.uncompressed_size = wrong_size
+            args.asset_count = 1
+            args.reserved = 0
+            args.force_misalignment = False
+
+            args.out = str(
+                base_out.with_name(f"{base_out.stem}_{i}.bun")
             )
 
             generate_single(args)
