@@ -173,7 +173,10 @@ def main():
     parser.add_argument("--force-misalignment", action="store_true")
 
     # NEW PBT CONTROLS
-    parser.add_argument("--mode", default="single", choices=["single", "fuzz", "property-none-size", "property-rle-size"])
+    parser.add_argument(
+        "--mode", 
+        default="single", 
+        choices=["single", "fuzz", "property-none-size", "property-rle-size", "property-valid-none"])
     parser.add_argument("--count", type=int, default=1)
 
     args = parser.parse_args()
@@ -250,6 +253,39 @@ def main():
 
             args.compression = "rle"
             args.uncompressed_size = wrong_size
+            args.asset_count = 1
+            args.reserved = 0
+            args.force_misalignment = False
+
+            args.out = str(
+                base_out.with_name(f"{base_out.stem}_{i}.bun")
+            )
+
+            generate_single(args)
+
+        return
+    
+    # =========================
+    # PROPERTY-BASED TESTING:
+    # valid none-compressed files
+    # =========================
+    if args.mode == "property-valid-none":
+        base_out = Path(args.out)
+        base_out.parent.mkdir(parents=True, exist_ok=True)
+
+        valid_payloads = [
+            "A",
+            "ABCD",
+            "Hello",
+            "Hello, BUN!",
+            "1234567890",
+        ]
+
+        for i, payload in enumerate(valid_payloads, start=1):
+            args.asset_name = "hello"
+            args.asset_payload = payload
+            args.compression = "none"
+            args.uncompressed_size = 0
             args.asset_count = 1
             args.reserved = 0
             args.force_misalignment = False
