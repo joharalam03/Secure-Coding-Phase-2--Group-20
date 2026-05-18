@@ -184,7 +184,6 @@ done
 echo "Checked property cases: $property_checked" >> "$PROPERTY_LOG"
 echo "Triggered property flaws: $property_triggered" >> "$PROPERTY_LOG"
 
-echo "Property-based tests complete. Log: $PROPERTY_LOG"
 
 # --- PROPERTY-BASED TESTS: RLE expanded size must match uncompressed_size ---
 
@@ -298,4 +297,5 @@ for f in "$PROPERTY_DIR"/prop_name_bounds_*.bun; do
     echo "---------------------------" >> "$PROPERTY_LOG"
 done
 
+echo "Property-based tests complete. Log: $PROPERTY_LOG"
 echo "All tests complete. Logs are in results/"
