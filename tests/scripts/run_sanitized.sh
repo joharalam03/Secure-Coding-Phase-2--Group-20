@@ -109,4 +109,66 @@ else
     echo "[OK] Sanitizer build completed with no reported failures."
 fi
 
+OPT_CFLAGS="-std=c11 -Wall -Wextra -Wpedantic -O3 -g0"
+
+echo
+echo "========================================"
+echo "C. Optimisation build"
+echo "========================================"
+echo "Using CFLAGS: $OPT_CFLAGS"
+echo
+
+echo "Rebuilding target with optimisation flags..."
+cd target || exit 1
+
+make clean || true
+make CFLAGS="$OPT_CFLAGS"
+BUILD_STATUS=$?
+
+cd "$ROOT_DIR" || exit 1
+
+if [ $BUILD_STATUS -ne 0 ]; then
+    echo
+    echo "[FAIL] Optimisation build failed."
+    exit 1
+fi
+
+if [ ! -x "./target/bun_parser" ]; then
+    echo
+    echo "[FAIL] Optimisation build completed, but ./target/bun_parser was not produced."
+    exit 1
+fi
+
+echo
+echo "[OK] Optimisation build completed successfully."
+
+echo
+echo "Running reproduction tests under optimisation build..."
+
+mkdir -p results
+OPT_LOG="results/optimisation_test_output.log"
+
+bash tests/scripts/run_all.sh 2>&1 | tee "$OPT_LOG"
+TEST_STATUS=${PIPESTATUS[0]}
+
+if [ $TEST_STATUS -ne 0 ]; then
+    echo
+    echo "[FAIL] Test runner exited with a non-zero status under optimisation build."
+    exit 1
+fi
+
+if grep -qiE "Segmentation fault|core dumped|Aborted|runtime error:" "$OPT_LOG" results/* 2>/dev/null; then
+    echo
+    echo "[FAIL] Optimisation build produced a crash or runtime error."
+    exit 1
+fi
+
+if grep -qiE "\[FAIL\]|\[INCORRECT OUTPUT\]" "$OPT_LOG" 2>/dev/null; then
+    echo
+    echo "[INFO] Optimisation build completed, and reproduction tests reported known incorrect-output findings."
+else
+    echo
+    echo "[OK] Optimisation build completed with no reported failures."
+fi
+
 exit 0
