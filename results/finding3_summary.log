@@ -1,4 +1,5 @@
 # Finding 3: stdout vs stderr violations
+tests/fixtures/valid/crafted/reserved_nonzero.bun → violation printed to STDOUT
 tests/fixtures/invalid/samples/01-bad-magic.bun → violation printed to STDOUT
 tests/fixtures/invalid/samples/02-bad-version.bun → violation printed to STDOUT
 tests/fixtures/invalid/samples/03-bad-offset-alignment.bun → violation printed to STDOUT
@@ -15,8 +16,17 @@ tests/fixtures/invalid/samples/13-asset-empty-name.bun → violation printed to 
 tests/fixtures/invalid/samples/14-rle-zero-count.bun → violation printed to STDOUT
 tests/fixtures/invalid/samples/15-rle-bomb.bun → violation printed to STDOUT
 tests/fixtures/invalid/samples/16-rle-truncated.bun → violation printed to STDOUT
+tests/fixtures/invalid/crafted/bad_align_data_section.bun → no violation message detected
 tests/fixtures/invalid/crafted/bad_align_multi_asset.bun → violation printed to STDOUT
 tests/fixtures/invalid/crafted/bad_align_single_asset.bun → violation printed to STDOUT
-tests/fixtures/invalid/crafted/partial_string_attack.bun → violation printed to STDOUT
+tests/fixtures/invalid/crafted/partial_invalid_01_partial_string_attack.bun → violation printed to STDOUT
+tests/fixtures/invalid/crafted/partial_invalid_02_truncated_last_name.bun → violation printed to STDOUT
+tests/fixtures/invalid/crafted/partial_invalid_03_oob_name_offset.bun → violation printed to STDOUT
+tests/fixtures/invalid/crafted/partial_invalid_04_invalid_name_length.bun → violation printed to STDOUT
+tests/fixtures/invalid/crafted/partial_invalid_05_invalid_data_offset.bun → violation printed to STDOUT
+tests/fixtures/invalid/crafted/partial_invalid_06_multi_violation.bun → violation printed to STDOUT
+tests/fixtures/invalid/crafted/partial_invalid_07_middle_name_cutoff.bun → violation printed to STDOUT
+tests/fixtures/invalid/crafted/partial_invalid_08_recover_after_bad_asset.bun → violation printed to STDOUT
+tests/fixtures/invalid/crafted/partial_invalid_09_violation_accumulation.bun → violation printed to STDOUT
 tests/fixtures/invalid/crafted/rle_bad_uncompressed.bun → no violation message detected
 tests/fixtures/invalid/crafted/uncompressed_bad_size.bun → no violation message detected
