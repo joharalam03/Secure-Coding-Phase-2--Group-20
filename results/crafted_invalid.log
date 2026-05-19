@@ -1,4 +1,75 @@
 # Crafted invalid test files
+Testing tests/fixtures/invalid/crafted/bad_align_data_section.bun
+=== BUN File Header ===
+  Magic: 0x304e5542 (expected 0x304e5542)
+  Version: 1.0
+  Asset count: 5
+  Asset table offset: 60
+  String table offset: 300
+  String table size: 8
+  Data section offset: 308
+  Data section size: 5
+  Reserved: 0
+
+=== Asset Records ===
+
+Asset 0:
+  Name: "hello"
+  Name offset: 0, length: 5
+  Data offset: 0, size: 4
+  Uncompressed size: 0
+  Compression: 1 (0=none)
+  Type: 0
+  Checksum: 0x00000000
+  Flags: 0x00000000
+  Data: "AAAA"
+
+Asset 1:
+  Name: "hello"
+  Name offset: 0, length: 5
+  Data offset: 0, size: 4
+  Uncompressed size: 0
+  Compression: 1 (0=none)
+  Type: 0
+  Checksum: 0x00000000
+  Flags: 0x00000000
+  Data: "AAAA"
+
+Asset 2:
+  Name: "hello"
+  Name offset: 0, length: 5
+  Data offset: 0, size: 4
+  Uncompressed size: 0
+  Compression: 1 (0=none)
+  Type: 0
+  Checksum: 0x00000000
+  Flags: 0x00000000
+  Data: "AAAA"
+
+Asset 3:
+  Name: "hello"
+  Name offset: 0, length: 5
+  Data offset: 0, size: 4
+  Uncompressed size: 0
+  Compression: 1 (0=none)
+  Type: 0
+  Checksum: 0x00000000
+  Flags: 0x00000000
+  Data: "AAAA"
+
+Asset 4:
+  Name: "hello"
+  Name offset: 0, length: 5
+  Data offset: 0, size: 4
+  Uncompressed size: 0
+  Compression: 1 (0=none)
+  Type: 0
+  Checksum: 0x00000000
+  Flags: 0x00000000
+  Data: "AAAA"
+
+Result: bun_ok
+---------------------------
 Testing tests/fixtures/invalid/crafted/bad_align_multi_asset.bun
  BUN Malformed (error code: 1)
 - Offsets/sizes must be divisible by 4

@@ -33,9 +33,8 @@
   - `./target/bun_parser tests/fixtures/invalid/crafted/uncompressed_bad_size.bun >out.txt 2>err.txt; echo $?`
 - **Expected behavior:** Parser reports a violation and exits with `1` (`BUN_MALFORMED`).
 - **Actual behavior:** No violation message is emitted; parser prints normal parsed output and exits with `0` (`BUN_OK`).
-## Findings
 
-### Property-based testing
+## F-04 Property-based testing
 
 To complement the manually crafted fixtures (each of which only hits one numeric value), we encoded several spec invariants as *properties* and generated a family of inputs that violate each one in different ways. The generator is `tests/generators/bunfile_generator.py`, the driver lives in the `PROPERTY-BASED TESTS` blocks of `tests/scripts/run_all.sh`, and the captured per-input output is `results/property_tests.log`. For each property that we generated a small family of `.bun` files that all violate the same spec rule in different ways, we ran the target parser against each one, and recorded whether it correctly rejected the file (non-zero exit) or incorrectly accepted it (exit 0 or hang). A matching *valid-control* property generates the same shape of file in a spec-conformant way, so that any rejection from the parser is distinguishable from over-eager validation.
 
@@ -51,7 +50,7 @@ We made four properties:
   (spec 4.2 / 4.3). 5 files with asset names pointing outside an 8-byte string table were generated and the parser sohuld reject all.
 
 
-- **P4 — valid control: `compression == none` with
+- **Property 4 — valid control: `compression == none` with
   `uncompressed_size == 0` must be accepted** (inverse of P1). As a control, 5 completely valid test files were generated as a sanity check to make sure the parser doesn't just reject every file. These 5 files should be accepted by the parser.
 
 Results from one `make reproduce` run on the SDE as logged in `results/property_tests.log`:
@@ -65,7 +64,7 @@ Results from one `make reproduce` run on the SDE as logged in `results/property_
 
 As seen from the results above, two of the four properties shows bugs in their parser (P1 and P2). It accepted all 7 broken files from Proeprty 1 when it should have rejected them. The same is seen for Property 2 where all 5 files are accepted even though they should be rejected. The other 2 properties (P3 and P4) work correctly with the former being rejected and the latter shwoing no bugs.
 
-### F-05  Alignment check for `data_section_size` is only run sometimes
+## F-05  Alignment check for `data_section_size` is only run sometimes
 
 The bun spec mentions that all size and offset fields in the header must be a multiple of 4. Four of these fields are checked in `bun_parse.c` at line 165:
 ```c
@@ -76,6 +75,7 @@ if (header->asset_table_offset % 4 != 0 ||
     bun_add_violation(ctx, "Offsets/sizes must be divisible by 4");
     return BUN_MALFORMED;
 ```
+
 However, the fifth field is checked separately at line 205 and even then it only checks if the the file's first asset is uncompressed. The check is skipped entirely if the first asset uses RLE or zlib compression and a file with a misaligned `data_section_size` would be accepted.
 
  ```c
@@ -106,4 +106,12 @@ if (header->data_section_size % 4 != 0 && header->asset_count > 0) {
 }
  ```
 
-Two of our crafted files, `bad_align_single_asset.bun` and `bad_align_multi_asset.bun` are rejected by the parser but by the earlier check at line 165 because they also misalign other fields as well. This doesn't isolate line 205 where we could test a misaligned `data_section_size`. Therefore, we report this as a code inspection finding rather than a bug found and confirmed.
+Two of our earlier crafted files, `bad_align_single_asset.bun` and `bad_align_multi_asset.bun` were rejected by the parser but only by the earlier check at line 165 because they also misalign other fields as well. It didn't isolate line 205 where we could test a misaligned `data_section_size`. To isolate that, we added `tests/fixtures/invalid/crafted/bad_align_data_section.bun`. The standard generator coudn't create this test therefore, the fixture was built in two steps: `bunfile_generator.py` which produces files that conform to the spec requirement and then `tests/generators/patch_data_section.py` rewrites only `data_section_size` to a non-multiple of 4. All other header fields remain aligned. 
+
+We ran the target parser against the fixture as part of `make reproduce` and recorded the result in `results/crafted_invalid.log` and `results/finding3_summary.log`:
+
+| Fixture | First asset compression | `data_section_size` | Expected exit | Actual exit | Violation emitted |
+|---|---|---:|---:|---:|---|
+| `bad_align_data_section.bun` | 1 (RLE) | 5 | 1 (`BUN_MALFORMED`) | **0 (`BUN_OK`)** | **none** |
+
+The parser prints the parsed header and asset records as if the file were well-formed and exits `0`. With this fixture the finding is reproducible end-to-end.

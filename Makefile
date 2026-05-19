@@ -23,6 +23,14 @@ generate_crafted:
 	python3 $(GENERATORS) --out tests/fixtures/invalid/crafted/bad_align_single_asset.bun --asset-payload "AAAAA" --force-misalignment
 	# Alignment test multi-asset (safe controlled corruption)
 	python3 $(GENERATORS) --out tests/fixtures/invalid/crafted/bad_align_multi_asset.bun --asset-payload "AAAAA" --compression rle --asset-count 4 --force-misalignment
+	# Alignment test single asset (isolated data_section_size check)
+	python3 $(GENERATORS) \
+		--out tests/fixtures/invalid/crafted/bad_align_data_section.bun \
+		--asset-payload "AAAA" \
+		--compression rle \
+		--asset-count 5
+
+	python3 tests/generators/patch_data_section.py tests/fixtures/invalid/crafted/bad_align_data_section.bun
 
 	python3 tests/generators/partial_invalid_generator.py
 
@@ -37,11 +45,6 @@ reproduce: build generate_crafted
 	# Create results directory
 	mkdir -p results
 
-	# Ensure additional test directories exist
-	mkdir -p tests/fixtures/hangs
-	mkdir -p tests/fixtures/malformed
-	mkdir -p tests/fixtures/memory
-
 	@echo "Running all bun_parser tests..."
 	bash ./tests/scripts/run_all.sh
 
@@ -55,9 +58,7 @@ clear:
 	# Remove all crafted/generated directories and contents
 	rm -rf tests/fixtures/valid/crafted
 	rm -rf tests/fixtures/invalid/crafted
-	rm -rf tests/fixtures/hangs
-	rm -rf tests/fixtures/malformed
-	rm -rf tests/fixtures/memory
+	rm -rf tests/fixtures/property
 
 	@echo "All generated directories removed. Lecturer samples preserved."
 	@echo "Clean complete."
