@@ -58,6 +58,7 @@ clear:
 	# Remove all crafted/generated directories and contents
 	rm -rf tests/fixtures/valid/crafted
 	rm -rf tests/fixtures/invalid/crafted
+	rm -rf tests/fixtures/property
 
 	@echo "All generated directories removed. Lecturer samples preserved."
 	@echo "Clean complete."
