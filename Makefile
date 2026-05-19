@@ -47,6 +47,7 @@ reproduce: build generate_crafted
 
 	@echo "Running all bun_parser tests..."
 	bash ./tests/scripts/run_all.sh
+	bash ./tests/scripts/run_sanitized.sh
 
 
 .PHONY: clear

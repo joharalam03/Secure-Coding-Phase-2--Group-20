@@ -115,3 +115,19 @@ We ran the target parser against the fixture as part of `make reproduce` and rec
 | `bad_align_data_section.bun` | 1 (RLE) | 5 | 1 (`BUN_MALFORMED`) | **0 (`BUN_OK`)** | **none** |
 
 The parser prints the parsed header and asset records as if the file were well-formed and exits `0`. With this fixture the finding is reproducible end-to-end.
+
+## F-06 Compiler-Flag Testing
+
+`tests/scripts/run_sanitized.sh` rebuilds the target parser three ways and re-runs the full reproduction suite against each binary:
+
+| Build | CFLAGS | What it catches |
+|---|---|---|
+| Strict warnings | `-std=c11 -Wall -Wextra -Wpedantic -Wconversion -Wshadow -Wformat=2 -g -O2` | Implicit narrowing, shadowed identifiers, format-string misuse |
+| Sanitizer | `-std=c11 -Wall -Wextra -Wpedantic -fsanitize=address,undefined -fno-omit-frame-pointer -g -O2` | Out-of-bounds reads/writes, use-after-free, signed overflow, alignment / shift / bool UB |
+| Optimisation | `-std=c11 -Wall -Wextra -Wpedantic -O3 -g0` | Behavioural differences vs. `-O2 -g` (often a tell for undefined behaviour) |
+
+Each build is run against every fixture in the repository — lecturer samples (valid + invalid), crafted (valid + invalid), partial-invalid 01–09, the property-based invalid set and its valid controls, and the alignment-isolation fixture `bad_align_data_section.bun`. Results captured in `results/sanitizer_test_output.log` and `results/optimisation_test_output.log`:
+
+- The strict-warning build compiled with **zero warnings**.
+- The sanitizer build reported **no AddressSanitizer, UndefinedBehaviorSanitizer, or LeakSanitizer errors** on any fixture.
+- The optimisation build produced the **same exit codes and parser output** as the sanitizer and strict builds on every fixture, so no `-O3`-only behaviour was observed.
