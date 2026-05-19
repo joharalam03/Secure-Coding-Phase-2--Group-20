@@ -91,7 +91,7 @@ def write_asset_record(f, **kwargs):
 
 def generate_single(args):
     asset_name = args.asset_name.encode()
-    asset_payload = args.asset_payload.encode()
+    asset_payload = args.asset_payload.encode("latin-1")
     compression = COMPRESS_MAP[args.compression]
     asset_count = args.asset_count
 
@@ -135,8 +135,8 @@ def generate_single(args):
         for _ in range(asset_count):
             write_asset_record(
                 f,
-                name_offset=0,
-                name_length=len(asset_name),
+                name_offset=getattr(args, "name_offset", 0),
+                name_length=getattr(args, "name_length", len(asset_name)),
                 data_offset=0,
                 data_size=len(asset_payload),
                 compression=compression,
@@ -173,7 +173,17 @@ def main():
     parser.add_argument("--force-misalignment", action="store_true")
 
     # NEW PBT CONTROLS
-    parser.add_argument("--mode", default="single", choices=["single", "fuzz"])
+    parser.add_argument(
+        "--mode", 
+        default="single", 
+        choices=[
+            "single", 
+            "fuzz", 
+            "property-none-size", 
+            "property-rle-size", 
+            "property-valid-none",
+            "property-name-bounds"
+            ])
     parser.add_argument("--count", type=int, default=1)
 
     args = parser.parse_args()
@@ -195,6 +205,137 @@ def main():
             args.compression = random.choice(list(COMPRESS_MAP.keys()))
 
             args.out = str(Path(base_out).with_name(f"{Path(base_out).stem}_{i}.bun"))
+
+            generate_single(args)
+
+        return
+
+    # =========================
+    # PROPERTY-BASED TEST MODE:
+    # NONE COMPRESSION SIZE
+    # =========================
+    if args.mode == "property-none-size":
+        base_out = Path(args.out)
+        base_out.parent.mkdir(parents=True, exist_ok=True)
+
+        bad_sizes = [1, 2, 4, 8, 15, 255, 9999]
+
+        for size in bad_sizes:
+            args.asset_name = "hello"
+            args.asset_payload = "Hello, BUN!"
+            args.compression = "none"
+            args.uncompressed_size = size
+            args.asset_count = 1
+            args.reserved = 0
+            args.force_misalignment = False
+
+            args.out = str(
+                base_out.with_name(f"{base_out.stem}_{size}.bun")
+            )
+
+            generate_single(args)
+
+        return
+    
+    # =========================
+    # PROPERTY-BASED TESTING:
+    # RLE expanded size must match uncompressed_size
+    # =========================
+    if args.mode == "property-rle-size":
+        base_out = Path(args.out)
+        base_out.parent.mkdir(parents=True, exist_ok=True)
+
+        bad_rle_cases = [
+            (bytes([2, ord("A"), 3, ord("B")]), 99),      # expands to 5
+            (bytes([1, ord("A"), 1, ord("B")]), 10),      # expands to 2
+            (bytes([5, ord("X"), 6, ord("Y")]), 1),       # expands to 11
+            (bytes([10, ord("A"), 5, ord("B")]), 100),    # expands to 15
+            (bytes([7, ord("C"), 8, ord("D")]), 9999),    # expands to 15
+        ]
+
+        for i, (payload, wrong_size) in enumerate(bad_rle_cases, start=1):
+            args.asset_name = "hello"
+
+            args.asset_payload = payload.decode("latin-1")
+
+            args.compression = "rle"
+            args.uncompressed_size = wrong_size
+            args.asset_count = 1
+            args.reserved = 0
+            args.force_misalignment = False
+
+            args.out = str(
+                base_out.with_name(f"{base_out.stem}_{i}.bun")
+            )
+
+            generate_single(args)
+
+        return
+    
+    # =========================
+    # PROPERTY-BASED TESTING:
+    # valid none-compressed files
+    # =========================
+    if args.mode == "property-valid-none":
+        base_out = Path(args.out)
+        base_out.parent.mkdir(parents=True, exist_ok=True)
+
+        valid_payloads = [
+            "A",
+            "ABCD",
+            "Hello",
+            "Hello, BUN!",
+            "1234567890",
+        ]
+
+        for i, payload in enumerate(valid_payloads, start=1):
+            args.asset_name = "hello"
+            args.asset_payload = payload
+            args.compression = "none"
+            args.uncompressed_size = 0
+            args.asset_count = 1
+            args.reserved = 0
+            args.force_misalignment = False
+
+            args.out = str(
+                base_out.with_name(f"{base_out.stem}_{i}.bun")
+            )
+
+            generate_single(args)
+
+        return
+
+    # =========================
+    # PROPERTY-BASED TESTING:
+    # asset name must stay within string table
+    # =========================
+    if args.mode == "property-name-bounds":
+        base_out = Path(args.out)
+        base_out.parent.mkdir(parents=True, exist_ok=True)
+
+        bad_name_cases = [
+            (8, 1),       # starts exactly at end of string table
+            (6, 5),       # starts inside but extends beyond end
+            (100, 1),     # offset far outside string table
+            (0, 999),     # starts correctly but length is too large
+            (7, 2),       # crosses boundary by one byte
+        ]
+
+        for i, (bad_offset, bad_length) in enumerate(bad_name_cases, start=1):
+            args.asset_name = "hello"
+            args.asset_payload = "DATA"
+            args.compression = "none"
+            args.uncompressed_size = 0
+            args.asset_count = 1
+            args.reserved = 0
+            args.force_misalignment = False
+
+            args.name_offset = bad_offset
+            args.name_length = bad_length
+
+            args.out = str(
+                base_out.with_name(f"{base_out.stem}_{i}.bun")
+            )
 
             generate_single(args)
 
