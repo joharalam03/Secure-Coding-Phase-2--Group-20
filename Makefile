@@ -52,6 +52,9 @@ reproduce: build generate_crafted
 	@echo "Writing AFL fuzzing summary..."
 	bash ./tests/scripts/run_fuzz_summary.sh
 
+	@echo "Running memory handling tests..."
+	bash ./tests/scripts/run_memory_tests.sh
+
 
 .PHONY: clear
 clear:

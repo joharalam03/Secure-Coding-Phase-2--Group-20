@@ -8,6 +8,14 @@ The aim of this test was not to prove correctness, but to discover unforseen par
 
 The fuzzing ran for 15 hours but did not identify any unique crashes or hangs since no crash-inducing AFL-generated input was produced. Hence, fuzzing is documented as a method of testing rather than as a standalone finding. Our final reproducible findings are based on deterministic crafted and property-based tests. 
 
+### Memory handling tests
+
+We also tested whether the target parser used excessive memory when processing files with large attacker-controlled metadata values. The aim was to confirm whether the parser tended to allocate memory based directly on fields such as `uncompressed_size`, `data_section_size`, or `asset_count`.
+
+We generated three memory-stress fixtures: one with a very large RLE `uncompressed_size`, one with a very large declared `data_section_size`, and one with a very large `asset_count`. Each test was run using `/usr/bin/time -v` with a timeout of 5 seconds, and the peak resident memory was recorded from the `Maximum resident set size` field.
+
+Ultimately, these tests did not produce an excessive-memory finding. The target parser stayed around 1.4–1.5 MB peak resident memory in the tested cases, and did not exceed the 1 GB threshold required for an excessive-memory finding. Therefore, memory testing is documented as part of our testing method rather than as a standalone finding.
+
 
 
 # F3: Findings
@@ -148,5 +156,7 @@ Each build is run against every fixture in the repository — lecturer samples (
 # F4: Conclusion
 
 AFL++ fuzzing did not identify any additional crash or hang findings during the run. The final reported flaws are therefore based on deterministic crafted fixtures, property-based tests, and compiler-flag testing rather than AFL-generated crash inputs.
+
+Memory-stress testing also did not identify an excessive-memory finding: the tested large-metadata cases remained around 1.4–1.5 MB peak resident memory.
 
 Overall, the target parser did not show sanitizer crashes or optimisation-dependent behaviour, but it did show several reproducible correctness issues around malformed BUN inputs. In particular, the parser accepted invalid files involving RLE `uncompressed_size`, non-zero `uncompressed_size` when compression was disabled, and a misaligned `data_section_size` case. It also printed some violation diagnostics to `stdout` instead of `stderr`.
