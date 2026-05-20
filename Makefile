@@ -55,6 +55,11 @@ reproduce: build generate_crafted
 	@echo "Running memory handling tests..."
 	bash ./tests/scripts/run_memory_tests.sh
 
+.PHONY: gcov
+gcov:
+	@echo "Running GCOV coverage tests..."
+	bash ./tests/scripts/run_gcov.sh
+
 
 .PHONY: clear
 clear:

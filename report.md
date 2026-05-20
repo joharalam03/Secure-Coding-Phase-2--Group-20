@@ -1,5 +1,13 @@
 ##F2: Assumptions and Method 
 
+
+### Coverage testing with GCOV
+
+GCOV was used to test how much of the target parser was exercised by our reproduction tests. The target was rebuilt with coverage instrumentation using `-fprofile-arcs -ftest-coverage -g -O0`, then the test suite was run against the instrumented binary.
+
+The GCOV output was captured in `results/gcov_summary.log` where the measured line coverage was 36.07% for `bun_parse.c` and 25.44% for `main.c`. We used this as supporting evidence for our testing methodology, not as a standalone finding. The purpose was to confirm that our tests executed meaningful parser paths and to identify whether major areas of the parser were being exercised.
+
+
 ### Fuzzing approach
 
 Fuzz testing was implemented to search for crashes, hangs, and sanitiser-detected memory errors in the target parser, as an exploratory testing method. The seed used was from valid BUN files and generated BUN files in our existing fixtures. This supplied the fuzzer with structurally valid start points instead of completely random byte streams. 
