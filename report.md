@@ -12,39 +12,53 @@ The fuzzing ran for 15 hours but did not identify any unique crashes or hangs si
 
 # F3: Findings
 
-## F-01
+## F-01  Violation diagnostics are emitted to `stdout` instead of `stderr`
 
-- **Category:** Incorrect output
-- **Description:** For malformed input `tests/fixtures/invalid/crafted/bad_align_single_asset.bun`, the parser prints violation diagnostics to `stdout` instead of `stderr`.
-- **Spec reference:** Phase 1 brief, section 5.2(d): invalid-file violations must be output on standard error.
-- **Assumptions:** Standard error means `stderr` stream, separate from normal output stream (`stdout`).
-- **Reproduction:**
-  - `./target/bun_parser tests/fixtures/invalid/crafted/bad_align_single_asset.bun >out.txt 2>err.txt; echo $?`
-- **Expected behavior:** Violation messages appear on `stderr`; non-zero exit for malformed file.
-- **Actual behavior:** `stdout` contains malformed/violation output, `stderr` is empty, exit code is `1`.
+The phase brief requires that malformed inputs produce a human-readable list of violations on standard error (section 5.2(d)), while standard output is reserved for parsed file content (section 5.2(e)). During reproduction, we observed that this separation is not respected for at least one malformed crafted input: `tests/fixtures/invalid/crafted/bad_align_single_asset.bun`.
 
+To isolate output streams, we ran the parser with separate redirections for `stdout` and `stderr` and captured the exit code:
 
-## F-02
+`./target/bun_parser tests/fixtures/invalid/crafted/bad_align_single_asset.bun >out.txt 2>err.txt; echo $?`
 
-- **Category:** Incorrect output
-- **Description:** `tests/fixtures/invalid/crafted/rle_bad_uncompressed.bun` is accepted as valid (`BUN_OK`) even though RLE uncompressed size does not match the declared `uncompressed_size`.
-- **Spec reference:** BUN spec section 5.1(4): if compression is used and actual uncompressed size differs from `uncompressed_size`, parser must return `BUN_MALFORMED`.
-- **Assumptions:** The generator-crafted file correctly represents compressed RLE data with a declared size mismatch.
-- **Reproduction:**
-  - `./target/bun_parser tests/fixtures/invalid/crafted/rle_bad_uncompressed.bun >out.txt 2>err.txt; echo $?`
-- **Expected behavior:** Parser reports a violation and exits with `1` (`BUN_MALFORMED`).
-- **Actual behavior:** No violation message is emitted; parser prints normal parsed output and exits with `0` (`BUN_OK`).
+Observed behaviour from `make reproduce` artifacts:
 
-## F-03
+| Fixture | Expected exit | Actual exit | Expected stream for violations | Actual stream for violations |
+|---|---:|---:|---|---|
+| `bad_align_single_asset.bun` | 1 (`BUN_MALFORMED`) | 1 | `stderr` | **`stdout`** (`err.txt` empty) |
 
-- **Category:** Incorrect output
-- **Description:** `tests/fixtures/invalid/crafted/uncompressed_bad_size.bun` is accepted as valid (`BUN_OK`) even though `compression == 0` and `uncompressed_size` is non-zero.
-- **Spec reference:** BUN spec section 5.1(1): when `compression == 0`, `uncompressed_size` must be zero.
-- **Assumptions:** A non-zero `uncompressed_size` in uncompressed mode is always malformed under section 5.1(1).
-- **Reproduction:**
-  - `./target/bun_parser tests/fixtures/invalid/crafted/uncompressed_bad_size.bun >out.txt 2>err.txt; echo $?`
-- **Expected behavior:** Parser reports a violation and exits with `1` (`BUN_MALFORMED`).
-- **Actual behavior:** No violation message is emitted; parser prints normal parsed output and exits with `0` (`BUN_OK`).
+The parser does detect malformedness (correct non-zero exit), but the violation text is written to the wrong stream. This violates the project brief requirement for invalid-file reporting and makes automated checking harder, because tools that consume diagnostics from `stderr` receive no errors.
+
+## F-02  RLE size-mismatch files are incorrectly accepted
+
+The BUN specification requires strict consistency between declared and actual uncompressed size when compression is used. Section 5.1(4) states that if the parser detects compressed data and the real expanded size differs from `uncompressed_size`, parsing must abort with `BUN_MALFORMED`.
+
+We tested this using the crafted malformed fixture `tests/fixtures/invalid/crafted/rle_bad_uncompressed.bun`, which contains RLE-compressed data with a deliberately incorrect declared `uncompressed_size`. Reproduction command:
+
+`./target/bun_parser tests/fixtures/invalid/crafted/rle_bad_uncompressed.bun >out.txt 2>err.txt; echo $?`
+
+Run results (also consistent with the Property 2 outcomes in F-04):
+
+| Fixture | Rule violated | Expected exit | Actual exit | Violation emitted |
+|---|---|---:|---:|---|
+| `rle_bad_uncompressed.bun` | Spec 5.1(4): expanded size must equal `uncompressed_size` | 1 (`BUN_MALFORMED`) | **0 (`BUN_OK`)** | **none** |
+
+The parser prints normal parsed output and returns success, so malformed compressed assets can pass validation. This is a correctness and safety issue: downstream code may trust incorrect metadata and process asset payloads under false size assumptions.
+
+## F-03  `compression == 0` with non-zero `uncompressed_size` is incorrectly accepted
+
+Section 5.1(1) of the BUN spec defines a special-case invariant for uncompressed assets: when `compression == 0` (no compression), `uncompressed_size` must be exactly zero. A non-zero value is malformed.
+
+We validated this rule using `tests/fixtures/invalid/crafted/uncompressed_bad_size.bun`, where the asset is marked uncompressed but sets a non-zero `uncompressed_size`. Reproduction command:
+
+`./target/bun_parser tests/fixtures/invalid/crafted/uncompressed_bad_size.bun >out.txt 2>err.txt; echo $?`
+
+Observed result from reproduction logs:
+
+| Fixture | Rule violated | Expected exit | Actual exit | Violation emitted |
+|---|---|---:|---:|---|
+| `uncompressed_bad_size.bun` | Spec 5.1(1): for `compression=0`, `uncompressed_size=0` | 1 (`BUN_MALFORMED`) | **0 (`BUN_OK`)** | **none** |
+
+The parser accepts the file as valid and emits no violation text. This bug aligns with the broader property-based failure pattern reported in F-04 (Property 1), where multiple `compression=none + non-zero uncompressed_size` cases were accepted. Together, these results show the invariant is not enforced in the current implementation.
 
 ## F-04 Property-based testing
 
