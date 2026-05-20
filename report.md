@@ -1,3 +1,15 @@
+##F2: Assumptions and Method 
+
+### Fuzzing approach
+
+Fuzz testing was implemented to search for crashes, hangs, and sanitiser-detected memory errors in the target parser, as an exploratory testing method. The seed used was from valid BUN files and generated BUN files in our existing fixtures. This supplied the fuzzer with structurally valid start points instead of completely random byte streams. 
+
+The aim of this test was not to prove correctness, but to discover unforseen parser failiures caused by mutated binary inputs. During the test, we were on guard for abnormal termination, sanitiser reports, and hangs exceeding the 5-second threshold used in our reproduction scripts. 
+
+The fuzzing ran for 15 hours but did not identify any unique crashes or hangs since no crash-inducing AFL-generated input was produced. Hence, fuzzing is documented as a method of testing rather than as a standalone finding. Our final reproducible findings are based on deterministic crafted and property-based tests. 
+
+
+
 # F3: Findings
 
 ## F-01
@@ -131,3 +143,10 @@ Each build is run against every fixture in the repository — lecturer samples (
 - The strict-warning build compiled with **zero warnings**.
 - The sanitizer build reported **no AddressSanitizer, UndefinedBehaviorSanitizer, or LeakSanitizer errors** on any fixture.
 - The optimisation build produced the **same exit codes and parser output** as the sanitizer and strict builds on every fixture, so no `-O3`-only behaviour was observed.
+
+
+# F4: Conclusion
+
+AFL++ fuzzing did not identify any additional crash or hang findings during the run. The final reported flaws are therefore based on deterministic crafted fixtures, property-based tests, and compiler-flag testing rather than AFL-generated crash inputs.
+
+Overall, the target parser did not show sanitizer crashes or optimisation-dependent behaviour, but it did show several reproducible correctness issues around malformed BUN inputs. In particular, the parser accepted invalid files involving RLE `uncompressed_size`, non-zero `uncompressed_size` when compression was disabled, and a misaligned `data_section_size` case. It also printed some violation diagnostics to `stdout` instead of `stderr`.

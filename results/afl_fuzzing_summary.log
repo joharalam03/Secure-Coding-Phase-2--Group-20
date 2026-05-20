@@ -1,0 +1,15 @@
+# AFL++ fuzzing summary
+
+Target parser: target/bun_parser
+Tool: AFL++
+Seed corpus: valid and generated BUN fixtures
+Purpose: search for crashes, hangs, and sanitizer-detected failures
+
+Runtime: approximately 14 hours
+Unique crashes: 0
+Unique hangs: 0
+
+Conclusion:
+AFL++ did not produce a reproducible crash or hang during this run.
+No AFL-generated crash file is included as a finding.
+The final findings are based on deterministic crafted/property-based tests.

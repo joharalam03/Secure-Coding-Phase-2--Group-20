@@ -48,6 +48,9 @@ reproduce: build generate_crafted
 	@echo "Running all bun_parser tests..."
 	bash ./tests/scripts/run_all.sh
 	bash ./tests/scripts/run_sanitized.sh
+	
+	@echo "Writing AFL fuzzing summary..."
+	bash ./tests/scripts/run_fuzz_summary.sh
 
 
 .PHONY: clear
@@ -63,3 +66,5 @@ clear:
 
 	@echo "All generated directories removed. Lecturer samples preserved."
 	@echo "Clean complete."
+
+		
