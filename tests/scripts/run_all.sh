@@ -253,6 +253,45 @@ for f in "$PROPERTY_DIR"/prop_rle_bad_uncompressed_*.bun; do
     echo "---------------------------" >> "$PROPERTY_LOG"
 done
 
+# --- PROPERTY-BASED VALID CONTROL TESTS: compression=none and uncompressed_size=0 ---
+
+PROPERTY_VALID_DIR="tests/fixtures/property/valid"
+mkdir -p "$PROPERTY_VALID_DIR"
+
+echo "" >> "$PROPERTY_LOG"
+echo "# Property-based valid control tests" >> "$PROPERTY_LOG"
+echo "Property: compression=none with uncompressed_size=0 should be accepted" >> "$PROPERTY_LOG"
+
+python3 tests/generators/bunfile_generator.py \
+    --mode property-valid-none \
+    --out "$PROPERTY_VALID_DIR/prop_valid_none.bun" \
+    >> "$PROPERTY_LOG" 2>&1
+
+for f in "$PROPERTY_VALID_DIR"/prop_valid_none_*.bun; do
+    [ -e "$f" ] || continue
+
+    property_checked=$((property_checked + 1))
+
+    echo "Testing $f" >> "$PROPERTY_LOG"
+
+    timeout 5 "$BUN_PARSER" "$f" >> "$PROPERTY_LOG" 2>&1
+    EC=$?
+
+    if [ $EC -eq 124 ]; then
+        echo "[TRIGGERED FLAW] Valid control case caused parser hang" >> "$PROPERTY_LOG"
+        echo -e "\033[0;31m[FAIL] $f expected valid, parser hung\033[0m"
+        property_triggered=$((property_triggered + 1))
+    elif [ $EC -eq 0 ]; then
+        echo "[OK] Valid control case accepted with exit code 0" >> "$PROPERTY_LOG"
+    else
+        echo "[UNEXPECTED] Valid control case rejected with exit code $EC" >> "$PROPERTY_LOG"
+        echo -e "\033[0;31m[FAIL] $f expected valid, got exit code $EC\033[0m"
+        property_triggered=$((property_triggered + 1))
+    fi
+
+    echo "---------------------------" >> "$PROPERTY_LOG"
+done
+
 # --- PROPERTY-BASED TESTS: asset name must stay within string table ---
 
 echo "" >> "$PROPERTY_LOG"

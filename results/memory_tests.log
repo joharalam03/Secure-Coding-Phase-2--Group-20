@@ -6,15 +6,15 @@ These tests check whether the target parser uses excessive memory when given fil
 ## mem_rle_huge_uncompressed
 File: tests/fixtures/memory/rle_huge_uncompressed.bun
 Exit status: 0
-	Maximum resident set size (kbytes): 2192
+	Maximum resident set size (kbytes): 2180
 
 ## mem_huge_data_section
 File: tests/fixtures/memory/huge_data_section.bun
 Exit status: 1
-	Maximum resident set size (kbytes): 2136
+	Maximum resident set size (kbytes): 2192
 
 ## mem_huge_asset_count
 File: tests/fixtures/memory/huge_asset_count.bun
 Exit status: 1
-	Maximum resident set size (kbytes): 2056
+	Maximum resident set size (kbytes): 2196
 
