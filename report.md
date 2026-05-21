@@ -1,10 +1,18 @@
 ## F1: Target Selection and Initial Observations
 
-We selected **Group 23's codebase** as our primary target. During initial triage, we applied the same process to both candidates (manual review plus AI-assisted static analysis using ChatGPT) and observed more potential issues in Group 23 than Group 1. We also observed clearer gaps in the consistency of validation checks and, in our initial setup checks, no successful outcomes from `make test`. We therefore prioritised Group 23 because it offered stronger potential for reproducible security and correctness findings within the project scope.
+We selected Group 23’s codebase as our primary target for the phase 2 security assessment. In our initial triage, we applied the same comparison process to both candidate submissions (manual code review plus AI-assisted static analysis using ChatGPT). Group 23 produced a higher number of potential parser-validation issues than Group 1 under that same process, so it presented a stronger opportunity for identifying reproducible correctness and security-relevant findings. During setup checks, we also observed that Group 23 did not produce successful outcomes with make test, which further supported selecting it as the higher-risk target for deeper testing.
 
-At a high level, the codebase is reasonably structured, with parser execution and test workflows separated into scripts and fixtures. Because validation occurs across multiple parser stages, we combined sample replay, crafted negative cases, property-based generation, fuzzing, and memory-stress testing to verify that specification invariants are enforced consistently across code paths and input shapes. Fuzzing was included to exercise unexpected parser states (including crash and hang paths), while memory-focused tests were included to assess whether attacker-controlled metadata could influence allocation behaviour and create resource-exhaustion risk.
+From a structural perspective, the codebase is organised into parser code, generators, fixtures, and test scripts, which made end-to-end reproduction practical. At the same time, our review suggested that rule enforcement was spread across multiple parser stages (for example, header-level checks, per-asset checks, and compression-specific branches). Multi-stage validation is expected in parsers, but this design can introduce branch-specific inconsistencies if invariants are not enforced uniformly across all paths.
 
-##F2: Assumptions and Method 
+This informed our testing strategy. We used lecturer sample replay to establish baseline behaviour on provided valid/invalid files, crafted negative fixtures to isolate specific specification rules, and property-based generation to test the same invariant across varied input shapes and values. We included fuzzing to explore unexpected state transitions, crash paths, and hang behaviour that deterministic cases may not cover, and memory-stress testing to examine whether attacker-controlled metadata could influence allocation behaviour or create resource-exhaustion risk.
+
+## F2: Assumptions and Method 
+
+### Sample test execution 
+
+As part of our baseline method, we ran the target parser against the lecturer-provided sample BUN files (both valid and invalid sets) using the same reproducible pipeline (`make reproduce`). This ensured we first observed parser behaviour on canonical fixtures before interpreting crafted and property-based failures.
+
+The harness executes all files under `tests/fixtures/valid/samples` and `tests/fixtures/invalid/samples`, applies a 5-second timeout to invalid-case runs, and records parser output plus exit codes in `results/samples_valid.log` and `results/samples_invalid.log`. These logs were used as reference evidence for expected baseline behaviour and for comparison against later generated malformed inputs.
 
 ### Fuzzing approach
 
