@@ -570,10 +570,7 @@ def make_partial_invalid_suite():
 # ------------------------------------------------------------
 
 def main():
-
     make_partial_invalid_suite()
-
-    print("\nDone generating partial-invalid fixtures.")
 
 
 if __name__ == "__main__":

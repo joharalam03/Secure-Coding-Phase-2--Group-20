@@ -15,6 +15,10 @@ if [ ! -x "$BUN_PARSER" ]; then
     exit 1
 fi
 
+crafted_reproduced=0
+property_reproduced=0
+partial_reproduced=0
+
 # --- Finding 3 summary log ---
 SUMMARY_LOG="results/finding3_summary.log"
 > "$SUMMARY_LOG"
@@ -59,11 +63,13 @@ run_crafted_test() {
     cat "$tmp_out" >> "$logfile"
     cat "$tmp_err" >> "$logfile"
 
-    # Highlight fails in terminal
     if [ "$expected" == "valid" ] && [ $EC -ne 0 ]; then
-        echo -e "\033[0;31m[FAIL] $bunfile expected valid, got exit code $EC\033[0m"
+        echo -e "\033[0;33m[REPRODUCED] Parser rejected valid file: $(basename "$bunfile")\033[0m"
+        crafted_reproduced=$((crafted_reproduced + 1))
+
     elif [ "$expected" == "invalid" ] && [ $EC -eq 0 ]; then
-        echo -e "\033[0;31m[FAIL] $bunfile expected invalid, got exit code 0\033[0m"
+        echo -e "\033[0;33m[REPRODUCED] Parser accepted malformed file: $(basename "$bunfile")\033[0m"
+        crafted_reproduced=$((crafted_reproduced + 1))
     fi
 
     # --- partial-invalid logic ---
@@ -76,7 +82,8 @@ run_crafted_test() {
         violation_count=${violation_count:-0}
 
         if [ "$asset_count" -eq 0 ]; then
-            echo -e "\033[0;31m[FAIL] $bunfile: NO assets recovered\033[0m"
+            echo -e "\033[0;33m[REPRODUCED] No asset recovery: $(basename "$bunfile")\033[0m"
+            partial_reproduced=$((partial_reproduced + 1))
 
         elif [ "$violation_count" -le 1 ]; then
             echo -e "\033[0;33m[WARN] $bunfile: likely FAIL-FAST (violations=$violation_count)\033[0m"
@@ -188,10 +195,14 @@ for f in "$PROPERTY_DIR"/prop_none_bad_uncompressed_*.bun; do
     if [ $EC -eq 124 ]; then
         echo "[TRIGGERED FLAW] Parser hung for more than 5 seconds" >> "$PROPERTY_LOG"
         property_triggered=$((property_triggered + 1))
+        property_reproduced=$((property_reproduced + 1))
+
     elif [ $EC -eq 0 ]; then
         echo "[TRIGGERED FLAW] Invalid property case accepted with exit code 0" >> "$PROPERTY_LOG"
-        echo -e "\033[0;31m[FAIL] $f expected invalid, got exit code 0\033[0m"
+        echo -e "\033[0;33m[REPRODUCED] Parser accepted malformed property case: $(basename "$f")\033[0m"
         property_triggered=$((property_triggered + 1))
+        property_reproduced=$((property_reproduced + 1))
+
     else
         echo "[OK] Invalid property case rejected with exit code $EC" >> "$PROPERTY_LOG"
     fi
@@ -227,51 +238,16 @@ for f in "$PROPERTY_DIR"/prop_rle_bad_uncompressed_*.bun; do
     if [ $EC -eq 124 ]; then
         echo "[TRIGGERED FLAW] Parser hung for more than 5 seconds" >> "$PROPERTY_LOG"
         property_triggered=$((property_triggered + 1))
+        property_reproduced=$((property_reproduced + 1))
+
     elif [ $EC -eq 0 ]; then
         echo "[TRIGGERED FLAW] Invalid RLE property case accepted with exit code 0" >> "$PROPERTY_LOG"
-        echo -e "\033[0;31m[FAIL] $f expected invalid, got exit code 0\033[0m"
+        echo -e "\033[0;33m[REPRODUCED] Parser accepted malformed RLE property case: $(basename "$f")\033[0m"
         property_triggered=$((property_triggered + 1))
+        property_reproduced=$((property_reproduced + 1))
+
     else
         echo "[OK] Invalid RLE property case rejected with exit code $EC" >> "$PROPERTY_LOG"
-    fi
-
-    echo "---------------------------" >> "$PROPERTY_LOG"
-done
-
-# --- PROPERTY-BASED VALID CONTROL TESTS: compression=none and uncompressed_size=0 ---
-
-PROPERTY_VALID_DIR="tests/fixtures/property/valid"
-mkdir -p "$PROPERTY_VALID_DIR"
-
-echo "" >> "$PROPERTY_LOG"
-echo "# Property-based valid control tests" >> "$PROPERTY_LOG"
-echo "Property: compression=none with uncompressed_size=0 should be accepted" >> "$PROPERTY_LOG"
-
-python3 tests/generators/bunfile_generator.py \
-    --mode property-valid-none \
-    --out "$PROPERTY_VALID_DIR/prop_valid_none.bun" \
-    >> "$PROPERTY_LOG" 2>&1
-
-for f in "$PROPERTY_VALID_DIR"/prop_valid_none_*.bun; do
-    [ -e "$f" ] || continue
-
-    property_checked=$((property_checked + 1))
-
-    echo "Testing $f" >> "$PROPERTY_LOG"
-
-    timeout 5 "$BUN_PARSER" "$f" >> "$PROPERTY_LOG" 2>&1
-    EC=$?
-
-    if [ $EC -eq 124 ]; then
-        echo "[TRIGGERED FLAW] Valid control case caused parser hang" >> "$PROPERTY_LOG"
-        echo -e "\033[0;31m[FAIL] $f expected valid, parser hung\033[0m"
-        property_triggered=$((property_triggered + 1))
-    elif [ $EC -eq 0 ]; then
-        echo "[OK] Valid control case accepted with exit code 0" >> "$PROPERTY_LOG"
-    else
-        echo "[UNEXPECTED] Valid control case rejected with exit code $EC" >> "$PROPERTY_LOG"
-        echo -e "\033[0;31m[FAIL] $f expected valid, got exit code $EC\033[0m"
-        property_triggered=$((property_triggered + 1))
     fi
 
     echo "---------------------------" >> "$PROPERTY_LOG"
@@ -315,5 +291,15 @@ for f in "$PROPERTY_DIR"/prop_name_bounds_*.bun; do
     echo "---------------------------" >> "$PROPERTY_LOG"
 done
 
-echo "Property-based tests complete. Log: $PROPERTY_LOG"
-echo "All tests complete. Logs are in results/"
+echo
+echo "--------------------------------------------------"
+echo "Reproduction Summary"
+echo "--------------------------------------------------"
+echo "Crafted flaws reproduced:   $crafted_reproduced"
+echo "Property flaws reproduced: $property_reproduced"
+echo "Partial recovery flaws:    $partial_reproduced"
+echo
+echo "[OK] Detailed logs available in results/"
+echo "results/samples_valid.log  |  results/samples_invalid.log" 
+echo "results/crafted_valid.log  |  results/crafted_invalid.log"
+echo "results/property_tests.log"

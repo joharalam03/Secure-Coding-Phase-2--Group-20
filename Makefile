@@ -7,65 +7,83 @@ GENERATORS = tests/generators/bunfile_generator.py
 .PHONY: generate_crafted
 generate_crafted:
 	@echo "Ensuring crafted directories exist..."
-	mkdir -p tests/fixtures/valid/crafted
-	mkdir -p tests/fixtures/invalid/crafted
+	@mkdir -p tests/fixtures/valid/crafted
+	@mkdir -p tests/fixtures/invalid/crafted
 
-	# reserved field non-zero
-	python3 $(GENERATORS) --out tests/fixtures/valid/crafted/reserved_nonzero.bun --reserved 42
+	@echo "Generating crafted fixtures..."
+	@python3 $(GENERATORS) --out tests/fixtures/valid/crafted/reserved_nonzero.bun --reserved 42
 	
-	# RLE uncompressed_size mismatch 
-	python3 $(GENERATORS) --out tests/fixtures/invalid/crafted/rle_bad_uncompressed.bun --compression rle --asset-payload "AAAA" --uncompressed-size 10
+	@python3 $(GENERATORS) --out tests/fixtures/invalid/crafted/rle_bad_uncompressed.bun --compression rle --asset-payload "AAAA" --uncompressed-size 10
 
-	# set uncompressed size != 0 when compression==0
-	python3 $(GENERATORS) --out tests/fixtures/invalid/crafted/uncompressed_bad_size.bun --compression none --uncompressed-size 9999
+	@python3 $(GENERATORS) --out tests/fixtures/invalid/crafted/uncompressed_bad_size.bun --compression none --uncompressed-size 9999
 
-	# Alignment test single asset (safe controlled corruption)
-	python3 $(GENERATORS) --out tests/fixtures/invalid/crafted/bad_align_single_asset.bun --asset-payload "AAAAA" --force-misalignment
-	# Alignment test multi-asset (safe controlled corruption)
-	python3 $(GENERATORS) --out tests/fixtures/invalid/crafted/bad_align_multi_asset.bun --asset-payload "AAAAA" --compression rle --asset-count 4 --force-misalignment
-	# Alignment test single asset (isolated data_section_size check)
-	python3 $(GENERATORS) \
+	@python3 $(GENERATORS) --out tests/fixtures/invalid/crafted/bad_align_single_asset.bun --asset-payload "AAAAA" --force-misalignment
+
+	@python3 $(GENERATORS) --out tests/fixtures/invalid/crafted/bad_align_multi_asset.bun --asset-payload "AAAAA" --compression rle --asset-count 4 --force-misalignment
+
+	@python3 $(GENERATORS) \
 		--out tests/fixtures/invalid/crafted/bad_align_data_section.bun \
 		--asset-payload "AAAA" \
 		--compression rle \
 		--asset-count 5
 
-	python3 tests/generators/patch_data_section.py tests/fixtures/invalid/crafted/bad_align_data_section.bun
+	@python3 tests/generators/patch_data_section.py tests/fixtures/invalid/crafted/bad_align_data_section.bun
 
-	python3 tests/generators/partial_invalid_generator.py
+	@python3 tests/generators/partial_invalid_generator.py
 
 .PHONY: build
 build: 
 	@echo "Building target source code..."
-	cd target && $(MAKE) || { echo "Build failed"; exit 1; }
+	@cd target && $(MAKE) || { echo "Build failed"; exit 1; }
 
 .PHONY: reproduce
 reproduce: build generate_crafted
-	@echo "Setting up directories for test output..."
-	# Create results directory
-	mkdir -p results
+	@mkdir -p results
 
-	@echo "Running all bun_parser tests..."
-	bash ./tests/scripts/run_all.sh
-	bash ./tests/scripts/run_sanitized.sh
-	
-	@echo "Writing AFL fuzzing summary..."
-	bash ./tests/scripts/run_fuzz_summary.sh
+	@echo "=================================================="
+	@echo "Running reproduction pipeline"
+	@echo "=================================================="
 
-	@echo "Running memory handling tests..."
-	bash ./tests/scripts/run_memory_tests.sh
+	@echo ""
+	@echo "========================================"
+	@echo "[1/4] Running parser reproduction tests..."
+	@echo "========================================"
+	@bash ./tests/scripts/run_all.sh
 
+	@echo ""
+	@echo "========================================"
+	@echo "[2/4] Running sanitizer analysis..."
+	@echo "========================================"
+	@bash ./tests/scripts/run_sanitized.sh
+
+	@echo ""
+	@echo "========================================"
+	@echo "[3/4] Writing AFL fuzzing summary..."
+	@echo "========================================"
+	@bash ./tests/scripts/run_fuzz_summary.sh
+
+	@echo ""
+	@echo "========================================"
+	@echo "[4/4] Running memory handling tests..."
+	@echo "========================================"
+	@bash ./tests/scripts/run_memory_tests.sh
+
+	@echo ""
+	@echo "=================================================="
+	@echo "Detailed logs written to results/"
+	@echo "=================================================="
 
 .PHONY: clear
 clear:
 	@echo "Deleting all generated directories..."
-	# Remove results folder and contents
+	@echo "Removing results folder and contents..."
 	rm -rf results
 
-	# Remove all crafted/generated directories and contents
+	@echo "Removing crafted/generated directories and contents..."
 	rm -rf tests/fixtures/valid/crafted
 	rm -rf tests/fixtures/invalid/crafted
 	rm -rf tests/fixtures/property
+	rm -rf tests/fixtures/memory
 
 	@echo "All generated directories removed. Lecturer samples preserved."
 	@echo "Clean complete."

@@ -1,0 +1,37 @@
+[REPRODUCED] Parser rejected valid file: reserved_nonzero.bun
+[REPRODUCED] Parser accepted malformed file: bad_align_data_section.bun
+[REPRODUCED] No asset recovery: partial_invalid_01_partial_string_attack.bun
+[REPRODUCED] No asset recovery: partial_invalid_02_truncated_last_name.bun
+[REPRODUCED] No asset recovery: partial_invalid_03_oob_name_offset.bun
+[REPRODUCED] No asset recovery: partial_invalid_04_invalid_name_length.bun
+[REPRODUCED] No asset recovery: partial_invalid_05_invalid_data_offset.bun
+[REPRODUCED] No asset recovery: partial_invalid_06_multi_violation.bun
+[REPRODUCED] No asset recovery: partial_invalid_07_middle_name_cutoff.bun
+[REPRODUCED] No asset recovery: partial_invalid_08_recover_after_bad_asset.bun
+[REPRODUCED] No asset recovery: partial_invalid_09_violation_accumulation.bun
+[REPRODUCED] Parser accepted malformed file: rle_bad_uncompressed.bun
+[REPRODUCED] Parser accepted malformed file: uncompressed_bad_size.bun
+[REPRODUCED] Parser accepted malformed property case: prop_none_bad_uncompressed_15.bun
+[REPRODUCED] Parser accepted malformed property case: prop_none_bad_uncompressed_1.bun
+[REPRODUCED] Parser accepted malformed property case: prop_none_bad_uncompressed_255.bun
+[REPRODUCED] Parser accepted malformed property case: prop_none_bad_uncompressed_2.bun
+[REPRODUCED] Parser accepted malformed property case: prop_none_bad_uncompressed_4.bun
+[REPRODUCED] Parser accepted malformed property case: prop_none_bad_uncompressed_8.bun
+[REPRODUCED] Parser accepted malformed property case: prop_none_bad_uncompressed_9999.bun
+[REPRODUCED] Parser accepted malformed RLE property case: prop_rle_bad_uncompressed_1.bun
+[REPRODUCED] Parser accepted malformed RLE property case: prop_rle_bad_uncompressed_2.bun
+[REPRODUCED] Parser accepted malformed RLE property case: prop_rle_bad_uncompressed_3.bun
+[REPRODUCED] Parser accepted malformed RLE property case: prop_rle_bad_uncompressed_4.bun
+[REPRODUCED] Parser accepted malformed RLE property case: prop_rle_bad_uncompressed_5.bun
+
+--------------------------------------------------
+Reproduction Summary
+--------------------------------------------------
+Crafted flaws reproduced:   4
+Property flaws reproduced: 12
+Partial recovery flaws:    9
+
+[OK] Detailed logs available in results/
+results/samples_valid.log  |  results/samples_invalid.log
+results/crafted_valid.log  |  results/crafted_invalid.log
+results/property_tests.log
