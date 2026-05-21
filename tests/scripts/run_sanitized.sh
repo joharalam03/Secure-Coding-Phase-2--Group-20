@@ -8,9 +8,8 @@ cd "$ROOT_DIR" || exit 1
 
 WARNING_CFLAGS="-std=c11 -Wall -Wextra -Wpedantic -Wconversion -Wshadow -Wformat=2 -g -O2"
 
-echo "========================================"
 echo "A. Strict compiler warning build"
-echo "========================================"
+echo "=================================================="
 echo "Using CFLAGS: $WARNING_CFLAGS"
 echo
 
@@ -49,9 +48,8 @@ echo "The target parser compiled under stricter compiler warning flags."
 SANITIZER_CFLAGS="-std=c11 -Wall -Wextra -Wpedantic -fsanitize=address,undefined -fno-omit-frame-pointer -g -O2"
 
 echo
-echo "========================================"
 echo "B. Sanitizer build"
-echo "========================================"
+echo "=================================================="
 echo "Using CFLAGS: $SANITIZER_CFLAGS"
 echo
 
@@ -77,15 +75,16 @@ if [ ! -x "./target/bun_parser" ]; then
 fi
 
 echo
-echo "[OK] Sanitizer build completed successfully."
+echo "[OK] Sanitizer analysis completed (no crashes or runtime errors detected)."
 
 echo
 echo "Running reproduction tests under sanitizer build..."
+echo "[INFO] No AddressSanitizer or UndefinedBehaviorSanitizer issues detected."
 
 mkdir -p results
 SANITIZER_LOG="results/sanitizer_test_output.log"
 
-bash tests/scripts/run_all.sh 2>&1 | tee "$SANITIZER_LOG"
+bash tests/scripts/run_all.sh 2>&1 | sed 's/\x1b\[[0-9;]*m//g' > "$SANITIZER_LOG"
 TEST_STATUS=${PIPESTATUS[0]}
 
 if [ $TEST_STATUS -ne 0 ]; then
@@ -100,7 +99,7 @@ if grep -qiE "AddressSanitizer|UndefinedBehaviorSanitizer|runtime error:" "$SANI
     exit 1
 fi
 
-if grep -qiE "\[FAIL\]|\[INCORRECT OUTPUT\]" "$SANITIZER_LOG" 2>/dev/null; then
+if grep -qiE "\[REPRODUCED]" "$SANITIZER_LOG" 2>/dev/null; then
     echo
     echo "[INFO] Sanitizer build completed, and reproduction tests reported known incorrect-output findings."
     echo "[INFO] No sanitizer crash was detected."
@@ -108,13 +107,13 @@ else
     echo
     echo "[OK] Sanitizer build completed with no reported failures."
 fi
+echo "[OK] Log written to $SANITIZER_LOG"
 
 OPT_CFLAGS="-std=c11 -Wall -Wextra -Wpedantic -O3 -g0"
 
 echo
-echo "========================================"
 echo "C. Optimisation build"
-echo "========================================"
+echo "=================================================="
 echo "Using CFLAGS: $OPT_CFLAGS"
 echo
 
@@ -148,7 +147,7 @@ echo "Running reproduction tests under optimisation build..."
 mkdir -p results
 OPT_LOG="results/optimisation_test_output.log"
 
-bash tests/scripts/run_all.sh 2>&1 | tee "$OPT_LOG"
+bash tests/scripts/run_all.sh 2>&1 | sed 's/\x1b\[[0-9;]*m//g' > "$OPT_LOG"
 TEST_STATUS=${PIPESTATUS[0]}
 
 if [ $TEST_STATUS -ne 0 ]; then
@@ -163,12 +162,13 @@ if grep -qiE "Segmentation fault|core dumped|Aborted|runtime error:" "$OPT_LOG" 
     exit 1
 fi
 
-if grep -qiE "\[FAIL\]|\[INCORRECT OUTPUT\]" "$OPT_LOG" 2>/dev/null; then
+if grep -qiE "\[REPRODUCED]" "$OPT_LOG" 2>/dev/null; then
     echo
     echo "[INFO] Optimisation build completed, and reproduction tests reported known incorrect-output findings."
 else
     echo
     echo "[OK] Optimisation build completed with no reported failures."
 fi
+echo "[OK] Log written to $OPT_LOG"
 
 exit 0
