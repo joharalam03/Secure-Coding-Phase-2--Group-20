@@ -1,3 +1,9 @@
+## F1: Target Selection and Initial Observations
+
+We selected **Group 23's codebase** as our primary target. During initial triage, we applied the same process to both candidates (manual review plus AI-assisted static analysis using ChatGPT) and observed more potential issues in Group 23 than Group 1. We also observed clearer gaps in the consistency of validation checks and, in our initial setup checks, no successful outcomes from `make test`. We therefore prioritised Group 23 because it offered stronger potential for reproducible security and correctness findings within the project scope.
+
+At a high level, the codebase is reasonably structured, with parser execution and test workflows separated into scripts and fixtures. Because validation occurs across multiple parser stages, we combined sample replay, crafted negative cases, property-based generation, fuzzing, and memory-stress testing to verify that specification invariants are enforced consistently across code paths and input shapes. Fuzzing was included to exercise unexpected parser states (including crash and hang paths), while memory-focused tests were included to assess whether attacker-controlled metadata could influence allocation behaviour and create resource-exhaustion risk.
+
 ##F2: Assumptions and Method 
 
 ### Fuzzing approach
