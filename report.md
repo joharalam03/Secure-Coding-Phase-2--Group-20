@@ -1,3 +1,26 @@
+# Phase 2 Findings Report - Group 20
+### Group Members:
+
+1. **Name: Zawad Huda**  
+   **Student Number: 23102177**  
+   **GitHub Username: zawadhuda**  
+
+2. **Name: Johar Khan**  
+   **Student Number: 24331036**  
+   **GitHub Username: joharalam03**  
+
+3. **Name: Jessica Lin**  
+   **Student Number: 24254044**  
+   **GitHub Username: JessicaLinnn**  
+
+4. **Name: Mineth Perera**  
+   **Student Number: 23284373**  
+   **GitHub Username: ethnimp**  
+
+5. **Name: Synne Wikborg**  
+   **Student Number: 24282424**  
+   **GitHub Username: sjiang0**  
+
 ## F1: Target Selection and Initial Observations
 
 We selected Group 23’s codebase as our primary target for the phase 2 security assessment. In our initial triage, we applied the same comparison process to both candidate submissions (manual code review plus AI-assisted static analysis using ChatGPT). Group 23 produced a higher number of potential parser-validation issues than Group 1 under that same process, so it presented a stronger opportunity for identifying reproducible correctness and security-relevant findings. During setup checks, we also observed that Group 23 did not produce successful outcomes with make test, which further supported selecting it as the higher-risk target for deeper testing.
@@ -12,7 +35,7 @@ This informed our testing strategy. We used sample replay to establish baseline 
 
 As part of our baseline method, we ran the target parser against the lecturer-provided sample BUN files (both valid and invalid sets) using the same reproducible pipeline (`make reproduce`). This ensured we first observed parser behaviour on canonical fixtures before interpreting crafted and property-based failures.
 
-The harness executes all files under `tests/fixtures/valid/samples` and `tests/fixtures/invalid/samples`, applies a 5-second timeout to invalid-case runs, and records parser output plus exit codes in `results/samples_valid.log` and `results/samples_invalid.log`. These logs were used as reference evidence for expected baseline behaviour and for comparison against later generated malformed inputs.
+The harness executes all files under `tests/fixtures/valid/samples` and `tests/fixtures/invalid/samples` and records parser output plus exit codes in `results/samples_valid.log` and `results/samples_invalid.log`. These logs were used as reference evidence for expected baseline behaviour and for comparison against later generated malformed inputs.
 
 ### Crafted test execution
 
@@ -26,7 +49,7 @@ The reproduction harness runs crafted valid fixtures from `tests/fixtures/valid/
 
 Fuzz testing was implemented to search for crashes, hangs, and sanitiser-detected memory errors in the target parser, as an exploratory testing method. The seed used was from valid BUN files and generated BUN files in our existing fixtures. This supplied the fuzzer with structurally valid start points instead of completely random byte streams. 
 
-The aim of this test was not to prove correctness, but to discover unforseen parser failiures caused by mutated binary inputs. During the test, we were on guard for abnormal termination, sanitiser reports, and hangs exceeding the 5-second threshold used in our reproduction scripts. 
+The aim of this test was not to prove correctness, but to discover unforeseen parser failures caused by mutated binary inputs. During the test, we were on guard for abnormal termination, sanitiser reports, and hangs exceeding the 5-second threshold used in our reproduction scripts. 
 
 The fuzzing ran for 15 hours but did not identify any unique crashes or hangs since no crash-inducing AFL-generated input was produced. Hence, fuzzing is documented as a method of testing rather than as a standalone finding. Our final reproducible findings are based on deterministic crafted and property-based tests. 
 
@@ -81,7 +104,7 @@ As seen from the results above, two of the four properties shows bugs in their p
 
 Each build is run against every fixture in the repository — lecturer samples (valid + invalid), crafted (valid + invalid), partial-invalid 01–09, the property-based invalid set and its valid controls, and the alignment-isolation fixture `bad_align_data_section.bun`. Results captured in `results/sanitizer_test_output.log` and `results/optimisation_test_output.log`:
 
-- The strict-warning build compiled with **zero warnings**.
+- The strict-warning build completed successfully but produced one `-Wconversion` warning in `read_u16_le()` relating to narrowing conversion into `u16`.
 - The sanitizer build reported **no AddressSanitizer, UndefinedBehaviorSanitizer, or LeakSanitizer errors** on any fixture.
 - The optimisation build produced the **same exit codes and parser output** as the sanitizer and strict builds on every fixture, so no `-O3`-only behaviour was observed.
 
@@ -188,6 +211,32 @@ We ran the target parser against the fixture as part of `make reproduce` and rec
 
 The parser prints the parsed header and asset records as if the file were well-formed and exits `0`. With this fixture the finding is reproducible end-to-end.
 
+## F-05 Parser stops after first malformed asset and fails to accumulate recoverable violations
+The project brief (5.2. Parser behaviour) requires malformed BUN files to:
+1. report “as many violations as can be safely detected”, and
+2. display “as much of the file as can be safely and sensibly shown”.
+
+To test this behaviour, we generated a series of partially invalid multi-asset fixtures (`partial_invalid_01`–`partial_invalid_09`) containing combinations of:
+- truncated asset names,
+- out-of-bounds string references,
+- invalid data offsets,
+- and mixed valid/invalid asset records.
+
+These fixtures were intended to preserve recoverable asset metadata either before or after the malformed region.
+
+Observed behaviour from `make reproduce`:
+| Fixture set | Expected behaviour | Actual behaviour |
+|---|---|---|
+| `partial_invalid_*.bun` | Report multiple safely-detectable violations and display recoverable asset information | Parser terminated after the first detected violation and did not display recoverable asset information|
+
+The reproduction harness reported:
+```
+[REPRODUCED] No asset recovery: partial_invalid_01_partial_string_attack.bun
+...
+[REPRODUCED] No asset recovery: partial_invalid_09_violation_accumulation.bun
+```
+
+This suggests the parser follows a mostly fail-fast strategy after the first malformed structure instead of continuing limited safe analysis. While fail-fast handling can reduce implementation complexity, it does not fully satisfy the brief’s requirement to accumulate violations and display recoverable information where safe to do so.
 
 
 # F4: Conclusion
@@ -196,4 +245,4 @@ AFL++ fuzzing did not identify any additional crash or hang findings during the 
 
 Memory-stress testing also did not identify an excessive-memory finding: the tested large-metadata cases remained around 1.4–1.5 MB peak resident memory.
 
-Overall, the target parser did not show sanitizer crashes or optimisation-dependent behaviour, but it did show several reproducible correctness issues around malformed BUN inputs. In particular, the parser accepted invalid files involving RLE `uncompressed_size`, non-zero `uncompressed_size` when compression was disabled, and a misaligned `data_section_size` case. It also printed some violation diagnostics to `stdout` instead of `stderr`.
+Overall, the target parser did not show sanitizer crashes or optimisation-dependent behaviour, but it did show several reproducible correctness issues around malformed BUN inputs. In particular, the parser accepted invalid files involving RLE `uncompressed_size`, non-zero `uncompressed_size` when compression was disabled, and a misaligned `data_section_size` case. It also printed some violation diagnostics to `stdout` instead of `stderr`, and violations were not accumulated for partially invalid files.
