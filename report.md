@@ -20,7 +20,7 @@ We created deterministic crafted fixtures to isolate individual BUN specificatio
 
 The crafted valid set contains a control file, `tests/fixtures/valid/crafted/reserved_nonzero.bun`, which checks our assumption that the header `reserved` field should be ignored as required by the specification. The crafted invalid set targets specific validation rules, including RLE `uncompressed_size` mismatch, non-zero `uncompressed_size` when `compression == 0`, misaligned header sizes and offsets, a separately isolated misaligned `data_section_size`, and partial-invalid multi-asset files where the parser should report violations while still showing any safely recoverable asset information.
 
-The reproduction harness runs crafted valid fixtures from `tests/fixtures/valid/crafted` and crafted invalid fixtures from `tests/fixtures/invalid/crafted`. Results are written to `results/crafted_valid.log` and `results/crafted_invalid.log`, while `results/finding3_summary.log` records whether violation diagnostics appeared on `stdout` or `stderr`. These crafted tests form the direct evidence for F-01, F-02, F-03, and F-05.
+The reproduction harness runs crafted valid fixtures from `tests/fixtures/valid/crafted` and crafted invalid fixtures from `tests/fixtures/invalid/crafted`. Results are written to `results/crafted_valid.log` and `results/crafted_invalid.log`, while `results/finding3_summary.log` records whether violation diagnostics appeared on `stdout` or `stderr`. These crafted tests form the direct evidence for F-01, F-02, F-03, and F-04.
 
 ### Fuzzing approach
 
@@ -39,6 +39,51 @@ We generated three memory-stress fixtures: one with a very large RLE `uncompress
 Ultimately, these tests did not produce an excessive-memory finding. The target parser stayed around 1.4–1.5 MB peak resident memory in the tested cases, and did not exceed the 1 GB threshold required for an excessive-memory finding. Therefore, memory testing is documented as part of our testing method rather than as a standalone finding.
 
 
+### Property-based testing
+
+To complement the manually crafted fixtures (each of which only hits one numeric value), we encoded several spec invariants as *properties* and generated a family of inputs that violate each one in different ways. The generator is `tests/generators/bunfile_generator.py`, the driver lives in the `PROPERTY-BASED TESTS` blocks of `tests/scripts/run_all.sh`, and the captured per-input output is `results/property_tests.log`. For each property that we generated a small family of `.bun` files that all violate the same spec rule in different ways, we ran the target parser against each one, and recorded whether it correctly rejected the file (non-zero exit) or incorrectly accepted it (exit 0 or hang). A matching *valid-control* property generates the same shape of file in a spec-conformant way, so that any rejection from the parser is distinguishable from over-eager validation.
+
+We made four properties:
+
+- **Property 1 — If compression is "none", uncompressed_size must be 0** (spec 5.1(1)). We generated 7 files with `compression=none` but `uncompressed_size` set to 1, 2, 4, 8, 15, 255, and 9999.
+
+- **Property 2 — For RLE files, the expanded size must match
+  uncompressed_size** (spec 5.1(4)). 5 RLE files with wrong declared `uncompressed_size` were generated and the parser should have rejected all 5.
+  
+
+- **Property 3 — asset name must stay within the string table**
+  (spec 4.2 / 4.3). 5 files with asset names pointing outside an 8-byte string table were generated and the parser should reject all.
+
+
+- **Property 4 — valid control: `compression == none` with
+  `uncompressed_size == 0` must be accepted** (inverse of P1). As a control, 5 completely valid test files were generated as a sanity check to make sure the parser doesn't just reject every file. These 5 files should be accepted by the parser.
+
+Results from one `make reproduce` run on the SDE as logged in `results/property_tests.log`:
+
+| Property | Inputs | Rejected (good) | Accepted (BUG) |
+|---|---:|---:|---:|
+| P1 — none + nonzero uncompressed_size |  7 | 0 | **7** |
+| P2 — RLE size mismatch                |  5 | 0 | **5** |
+| P3 — name outside string table        |  5 | 5 | 0 |
+| P4 — valid control                    |  5 | 5 (accepted) | 0 false rejections |
+
+As seen from the results above, two of the four properties shows bugs in their parser (P1 and P2). It accepted all 7 broken files from Property 1 when it should have rejected them. The same is seen for Property 2 where all 5 files are accepted even though they should be rejected. The other 2 properties (P3 and P4) work correctly with the former being rejected and the latter showing no bugs.
+
+### Compiler-Flag Testing
+
+`tests/scripts/run_sanitized.sh` rebuilds the target parser three ways and re-runs the full reproduction suite against each binary:
+
+| Build | CFLAGS | What it catches |
+|---|---|---|
+| Strict warnings | `-std=c11 -Wall -Wextra -Wpedantic -Wconversion -Wshadow -Wformat=2 -g -O2` | Implicit narrowing, shadowed identifiers, format-string misuse |
+| Sanitizer | `-std=c11 -Wall -Wextra -Wpedantic -fsanitize=address,undefined -fno-omit-frame-pointer -g -O2` | Out-of-bounds reads/writes, use-after-free, signed overflow, alignment / shift / bool UB |
+| Optimisation | `-std=c11 -Wall -Wextra -Wpedantic -O3 -g0` | Behavioural differences vs. `-O2 -g` (often a tell for undefined behaviour) |
+
+Each build is run against every fixture in the repository — lecturer samples (valid + invalid), crafted (valid + invalid), partial-invalid 01–09, the property-based invalid set and its valid controls, and the alignment-isolation fixture `bad_align_data_section.bun`. Results captured in `results/sanitizer_test_output.log` and `results/optimisation_test_output.log`:
+
+- The strict-warning build compiled with **zero warnings**.
+- The sanitizer build reported **no AddressSanitizer, UndefinedBehaviorSanitizer, or LeakSanitizer errors** on any fixture.
+- The optimisation build produced the **same exit codes and parser output** as the sanitizer and strict builds on every fixture, so no `-O3`-only behaviour was observed.
 
 # F3: Findings
 
@@ -66,7 +111,7 @@ We tested this using the crafted malformed fixture `tests/fixtures/invalid/craft
 
 `./target/bun_parser tests/fixtures/invalid/crafted/rle_bad_uncompressed.bun >out.txt 2>err.txt; echo $?`
 
-Run results (also consistent with the Property 2 outcomes in F-04):
+Run results (also consistent with the Property 2 outcomes in the Property-based testing method):
 
 | Fixture | Rule violated | Expected exit | Actual exit | Violation emitted |
 |---|---|---:|---:|---|
@@ -88,39 +133,10 @@ Observed result from reproduction logs:
 |---|---|---:|---:|---|
 | `uncompressed_bad_size.bun` | Spec 5.1(1): for `compression=0`, `uncompressed_size=0` | 1 (`BUN_MALFORMED`) | **0 (`BUN_OK`)** | **none** |
 
-The parser accepts the file as valid and emits no violation text. This bug aligns with the broader property-based failure pattern reported in F-04 (Property 1), where multiple `compression=none + non-zero uncompressed_size` cases were accepted. Together, these results show the invariant is not enforced in the current implementation.
-
-## F-04 Property-based testing
-
-To complement the manually crafted fixtures (each of which only hits one numeric value), we encoded several spec invariants as *properties* and generated a family of inputs that violate each one in different ways. The generator is `tests/generators/bunfile_generator.py`, the driver lives in the `PROPERTY-BASED TESTS` blocks of `tests/scripts/run_all.sh`, and the captured per-input output is `results/property_tests.log`. For each property that we generated a small family of `.bun` files that all violate the same spec rule in different ways, we ran the target parser against each one, and recorded whether it correctly rejected the file (non-zero exit) or incorrectly accepted it (exit 0 or hang). A matching *valid-control* property generates the same shape of file in a spec-conformant way, so that any rejection from the parser is distinguishable from over-eager validation.
-
-We made four properties:
-
-- **Property 1 — If compression is "none", uncompresed_size must be 0** (spec 5.1(1)). We geenrated 7 files with `compression=none` but `uncompressed_size` set to 1, 2, 4, 8, 15, 255, and 9999.
-
-- **Property 2 — For RLE files, the expanded size must match
-  uncompressed_size** (spec 5.1(4)). 5 RLE files with wrong declared `uncompressed_size` were generated and the parser should have rejected all 5.
-  
-
-- **Property 3 — asset name must stay within the string table**
-  (spec 4.2 / 4.3). 5 files with asset names pointing outside an 8-byte string table were generated and the parser sohuld reject all.
+The parser accepts the file as valid and emits no violation text. This bug aligns with the broader property-based failure pattern reported in the Property-based testing method (Property 1), where multiple `compression=none + non-zero uncompressed_size` cases were accepted. Together, these results show the invariant is not enforced in the current implementation.
 
 
-- **Property 4 — valid control: `compression == none` with
-  `uncompressed_size == 0` must be accepted** (inverse of P1). As a control, 5 completely valid test files were generated as a sanity check to make sure the parser doesn't just reject every file. These 5 files should be accepted by the parser.
-
-Results from one `make reproduce` run on the SDE as logged in `results/property_tests.log`:
-
-| Property | Inputs | Rejected (good) | Accepted (BUG) |
-|---|---:|---:|---:|
-| P1 — none + nonzero uncompressed_size |  7 | 0 | **7** |
-| P2 — RLE size mismatch                |  5 | 0 | **5** |
-| P3 — name outside string table        |  5 | 5 | 0 |
-| P4 — valid control                    |  5 | 5 (accepted) | 0 false rejections |
-
-As seen from the results above, two of the four properties shows bugs in their parser (P1 and P2). It accepted all 7 broken files from Proeprty 1 when it should have rejected them. The same is seen for Property 2 where all 5 files are accepted even though they should be rejected. The other 2 properties (P3 and P4) work correctly with the former being rejected and the latter shwoing no bugs.
-
-## F-05  Alignment check for `data_section_size` is only run sometimes
+## F-04  Alignment check for `data_section_size` is only run sometimes
 
 The bun spec mentions that all size and offset fields in the header must be a multiple of 4. Four of these fields are checked in `bun_parse.c` at line 165:
 ```c
@@ -172,21 +188,6 @@ We ran the target parser against the fixture as part of `make reproduce` and rec
 
 The parser prints the parsed header and asset records as if the file were well-formed and exits `0`. With this fixture the finding is reproducible end-to-end.
 
-## F-06 Compiler-Flag Testing
-
-`tests/scripts/run_sanitized.sh` rebuilds the target parser three ways and re-runs the full reproduction suite against each binary:
-
-| Build | CFLAGS | What it catches |
-|---|---|---|
-| Strict warnings | `-std=c11 -Wall -Wextra -Wpedantic -Wconversion -Wshadow -Wformat=2 -g -O2` | Implicit narrowing, shadowed identifiers, format-string misuse |
-| Sanitizer | `-std=c11 -Wall -Wextra -Wpedantic -fsanitize=address,undefined -fno-omit-frame-pointer -g -O2` | Out-of-bounds reads/writes, use-after-free, signed overflow, alignment / shift / bool UB |
-| Optimisation | `-std=c11 -Wall -Wextra -Wpedantic -O3 -g0` | Behavioural differences vs. `-O2 -g` (often a tell for undefined behaviour) |
-
-Each build is run against every fixture in the repository — lecturer samples (valid + invalid), crafted (valid + invalid), partial-invalid 01–09, the property-based invalid set and its valid controls, and the alignment-isolation fixture `bad_align_data_section.bun`. Results captured in `results/sanitizer_test_output.log` and `results/optimisation_test_output.log`:
-
-- The strict-warning build compiled with **zero warnings**.
-- The sanitizer build reported **no AddressSanitizer, UndefinedBehaviorSanitizer, or LeakSanitizer errors** on any fixture.
-- The optimisation build produced the **same exit codes and parser output** as the sanitizer and strict builds on every fixture, so no `-O3`-only behaviour was observed.
 
 
 # F4: Conclusion
