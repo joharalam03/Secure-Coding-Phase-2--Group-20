@@ -4,7 +4,7 @@ We selected Group 23’s codebase as our primary target for the phase 2 security
 
 From a structural perspective, the codebase is organised into parser code, generators, fixtures, and test scripts, which made end-to-end reproduction practical. At the same time, our review suggested that rule enforcement was spread across multiple parser stages (for example, header-level checks, per-asset checks, and compression-specific branches). Multi-stage validation is expected in parsers, but this design can introduce branch-specific inconsistencies if invariants are not enforced uniformly across all paths.
 
-This informed our testing strategy. We used lecturer sample replay to establish baseline behaviour on provided valid/invalid files, crafted negative fixtures to isolate specific specification rules, and property-based generation to test the same invariant across varied input shapes and values. We included fuzzing to explore unexpected state transitions, crash paths, and hang behaviour that deterministic cases may not cover, and memory-stress testing to examine whether attacker-controlled metadata could influence allocation behaviour or create resource-exhaustion risk.
+This informed our testing strategy. We used sample replay to establish baseline behaviour on provided valid/invalid files, crafted negative fixtures to isolate specific specification rules, and property-based generation to test the same invariant across varied input shapes and values. We included fuzzing to explore unexpected state transitions, crash paths, and hang behaviour that deterministic cases may not cover, and memory-stress testing to examine whether attacker-controlled metadata could influence allocation behaviour or create resource-exhaustion risk.
 
 ## F2: Assumptions and Method 
 
